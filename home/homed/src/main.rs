@@ -7,6 +7,8 @@ mod organizer;
 mod scanner;
 mod watcher;
 
+use std::collections::HashSet;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use config::Config;
@@ -16,8 +18,9 @@ use tracing::{error, info, warn};
 use watcher::FileEvent;
 
 use alerts::send_batch_alert;
+use nextcloud::scan_directories;
 
-const BATCH_QUIET_PERIOD: Duration = Duration::from_secs(5);
+const BATCH_QUIET_PERIOD: Duration = Duration::from_secs(30);
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -29,6 +32,7 @@ async fn main() -> anyhow::Result<()> {
 
     let http_client = reqwest::Client::new();
     let alerts_config = config.alerts.clone();
+    let nextcloud_config = config.photos.nextcloud.clone();
 
     let (shutdown_tx, _) = broadcast::channel(1);
     let (output_tx, mut output_rx) = mpsc::channel::<FileEvent>(100);
@@ -41,6 +45,7 @@ async fn main() -> anyhow::Result<()> {
     let mut organized_count = 0usize;
     let mut unsorted_count = 0usize;
     let mut failed_count = 0usize;
+    let mut scan_dirs: HashSet<PathBuf> = HashSet::new();
     let mut last_event_time: Option<Instant> = None;
 
     loop {
@@ -52,7 +57,15 @@ async fn main() -> anyhow::Result<()> {
             Some(event) = output_rx.recv() => {
                 log_event(&event);
                 match &event {
-                    FileEvent::Organized { .. } => organized_count += 1,
+                    FileEvent::Organized { old_path, new_path } => {
+                        organized_count += 1;
+                        if let Some(parent) = new_path.parent() {
+                            scan_dirs.insert(parent.to_path_buf());
+                        }
+                        if let Some(parent) = old_path.parent() {
+                            scan_dirs.insert(parent.to_path_buf());
+                        }
+                    }
                     FileEvent::Unsorted { .. } => unsorted_count += 1,
                     FileEvent::Failed { .. } => failed_count += 1,
                     _ => {}
@@ -61,6 +74,9 @@ async fn main() -> anyhow::Result<()> {
             }
             _ = tokio::time::sleep(timeout), if last_event_time.is_some() => {
                 if last_event_time.map(|t| t.elapsed() >= BATCH_QUIET_PERIOD).unwrap_or(false) {
+                    scan_directories(&nextcloud_config, &scan_dirs).await;
+                    scan_dirs.clear();
+
                     send_batch_alert(
                         &http_client,
                         &alerts_config,
@@ -76,6 +92,8 @@ async fn main() -> anyhow::Result<()> {
             }
             _ = tokio::signal::ctrl_c() => {
                 info!("received shutdown signal, draining pipelines");
+                scan_directories(&nextcloud_config, &scan_dirs).await;
+
                 if organized_count > 0 || unsorted_count > 0 || failed_count > 0 {
                     send_batch_alert(
                         &http_client,
