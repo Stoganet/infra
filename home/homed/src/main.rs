@@ -44,7 +44,7 @@ async fn main() -> anyhow::Result<()> {
 
     let mut organized_count = 0usize;
     let mut unsorted_count = 0usize;
-    let mut failed_count = 0usize;
+    let mut failed_files: Vec<(String, String)> = Vec::new();
     let mut scan_dirs: HashSet<PathBuf> = HashSet::new();
     let mut last_event_time: Option<Instant> = None;
 
@@ -67,7 +67,15 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                     FileEvent::Unsorted { .. } => unsorted_count += 1,
-                    FileEvent::Failed { .. } => failed_count += 1,
+                    FileEvent::Failed { path, error } => {
+                        failed_files.push((
+                            path.file_name()
+                                .and_then(|n| n.to_str())
+                                .unwrap_or("unknown")
+                                .to_string(),
+                            error.clone(),
+                        ));
+                    }
                     _ => {}
                 }
                 last_event_time = Some(Instant::now());
@@ -82,11 +90,11 @@ async fn main() -> anyhow::Result<()> {
                         &alerts_config,
                         organized_count,
                         unsorted_count,
-                        failed_count,
+                        &failed_files,
                     ).await;
                     organized_count = 0;
                     unsorted_count = 0;
-                    failed_count = 0;
+                    failed_files.clear();
                     last_event_time = None;
                 }
             }
@@ -94,13 +102,13 @@ async fn main() -> anyhow::Result<()> {
                 info!("received shutdown signal, draining pipelines");
                 scan_directories(&nextcloud_config, &scan_dirs).await;
 
-                if organized_count > 0 || unsorted_count > 0 || failed_count > 0 {
+                if organized_count > 0 || unsorted_count > 0 || !failed_files.is_empty() {
                     send_batch_alert(
                         &http_client,
                         &alerts_config,
                         organized_count,
                         unsorted_count,
-                        failed_count,
+                        &failed_files,
                     ).await;
                 }
                 shutdown_tx.send(()).ok();

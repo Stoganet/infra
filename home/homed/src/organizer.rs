@@ -60,9 +60,17 @@ fn build_target_path(
 /// ensure it's flushed to disk, then delete the original.
 ///
 /// On copy failure, cleans up any partial destination file.
-async fn move_safe(source: &Path, dest: &Path) -> Result<(), OrganizerError> {
+async fn move_safe(
+    source: &Path,
+    dest: &Path,
+    owner: Option<&str>,
+    group: Option<&str>,
+) -> Result<(), OrganizerError> {
     if let Some(parent) = dest.parent() {
         tokio::fs::create_dir_all(parent).await?;
+        if let (Some(o), Some(g)) = (owner, group) {
+            apply_ownership(parent, o, g).await;
+        }
     }
 
     if tokio::fs::rename(source, dest).await.is_ok() {
@@ -162,7 +170,14 @@ async fn handle_unsorted(
     let unsorted_path = config.photos_dir.join(unsorted_dir);
     let target = build_unsorted_path(&unsorted_path, filename);
 
-    match move_safe(path, &target).await {
+    match move_safe(
+        path,
+        &target,
+        config.file_owner.as_deref(),
+        config.file_group.as_deref(),
+    )
+    .await
+    {
         Ok(()) => {
             if let (Some(owner), Some(group)) = (&config.file_owner, &config.file_group) {
                 apply_ownership(&target, owner, group).await;
@@ -221,7 +236,14 @@ pub async fn run_organizer(
 
                 let target = build_target_path(&config, media_type, &datetime, &extension);
 
-                match move_safe(&path, &target).await {
+                match move_safe(
+                    &path,
+                    &target,
+                    config.file_owner.as_deref(),
+                    config.file_group.as_deref(),
+                )
+                .await
+                {
                     Ok(()) => {
                         if let (Some(owner), Some(group)) = (&config.file_owner, &config.file_group)
                         {
