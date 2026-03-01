@@ -150,7 +150,8 @@ for SOURCE in $BACKUP_SOURCES; do
     log "Copying $SOURCE -> $DEST"
 
     if OUTPUT=$(rclone copy "$SOURCE" "$DEST" --checksum --stats-one-line 2>&1); then
-        FILES=$(echo "$OUTPUT" | grep -oP 'Transferred:\s+\K\d+' || echo "0")
+        log "rclone output: $OUTPUT"
+        FILES=$(echo "$OUTPUT" | grep -oP 'Transferred:\s+\K\d+(?=\s*/|\s+/)' || echo "0")
         FILES=${FILES:-0}
         TOTAL_FILES=$((TOTAL_FILES + FILES))
         log "Copied $FILES files from $DIRNAME"
