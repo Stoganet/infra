@@ -59,7 +59,7 @@ services:
     image: nextcloud:latest
     container_name: nextcloud
     restart: unless-stopped
-    mem_limit: 800m
+    mem_limit: 1gb
     security_opt:
       - no-new-privileges:true
     depends_on:
@@ -97,7 +97,7 @@ services:
     container_name: jellyfin
     user: ${PUID}:${PGID}
     restart: unless-stopped
-    mem_limit: 2g
+    mem_limit: 1.5g
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -216,7 +216,7 @@ services:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
     restart: unless-stopped
-    mem_limit: 1g
+    mem_limit: 512m
     security_opt:
       - no-new-privileges:true
     network_mode: service:gluetun
@@ -265,7 +265,7 @@ services:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     restart: unless-stopped
-    mem_limit: 512m
+    mem_limit: 384m
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -295,7 +295,7 @@ services:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     restart: unless-stopped
-    mem_limit: 512m
+    mem_limit: 384m
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -325,7 +325,7 @@ services:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
     restart: unless-stopped
-    mem_limit: 512m
+    mem_limit: 384m
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -356,7 +356,7 @@ services:
     container_name: syncthing
     hostname: syncthing
     restart: unless-stopped
-    mem_limit: 512m
+    mem_limit: 384m
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -385,6 +385,149 @@ services:
       - "traefik.http.routers.syncthing.tls.certresolver=letsencrypt"
       - "traefik.http.services.syncthing.loadbalancer.server.port=8384"
 
+  immich-postgres:
+    image: ghcr.io/immich-app/postgres:16-vectorchord0.5.3-pgvector0.8.1
+    container_name: immich-postgres
+    restart: unless-stopped
+    mem_limit: 384m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    environment:
+      - POSTGRES_PASSWORD=${IMMICH_DB_PASSWORD}
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=immich
+    volumes:
+      - immich_postgres:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d immich"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  immich-redis:
+    image: redis:6.2-alpine
+    container_name: immich-redis
+    restart: unless-stopped
+    mem_limit: 128m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  immich-server:
+    image: ghcr.io/immich-app/immich-server:release
+    container_name: immich-server
+    restart: unless-stopped
+    mem_limit: 384m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    command: ['start.sh', 'immich']
+    volumes:
+      - /var/lib/nextcloud/data/admin/files/Photos:/usr/src/app/upload/library:ro
+    environment:
+      - DB_HOSTNAME=immich-postgres
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${IMMICH_DB_PASSWORD}
+      - DB_DATABASE_NAME=immich
+      - REDIS_HOSTNAME=immich-redis
+    depends_on:
+      immich-postgres:
+        condition: service_healthy
+      immich-redis:
+        condition: service_healthy
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/server-info/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.immich.rule=Host(`photos.${DOMAIN}`)"
+      - "traefik.http.routers.immich.entrypoints=websecure"
+      - "traefik.http.routers.immich.tls.certresolver=letsencrypt"
+      - "traefik.http.services.immich.loadbalancer.server.port=3001"
+
+  immich-microservices:
+    image: ghcr.io/immich-app/immich-server:release
+    container_name: immich-microservices
+    restart: unless-stopped
+    mem_limit: 384m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    command: ['start.sh', 'microservices']
+    volumes:
+      - /var/lib/nextcloud/data/admin/files/Photos:/usr/src/app/upload/library:ro
+    environment:
+      - DB_HOSTNAME=immich-postgres
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${IMMICH_DB_PASSWORD}
+      - DB_DATABASE_NAME=immich
+      - REDIS_HOSTNAME=immich-redis
+    depends_on:
+      immich-postgres:
+        condition: service_healthy
+      immich-redis:
+        condition: service_healthy
+    networks:
+      - internal
+
+  immich-machine-learning:
+    image: ghcr.io/immich-app/immich-machine-learning:release
+    container_name: immich-machine-learning
+    restart: unless-stopped
+    mem_limit: 1g
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    volumes:
+      - immich_model-cache:/cache
+    networks:
+      - internal
+
 networks:
   internal:
     driver: bridge
@@ -402,3 +545,5 @@ volumes:
   radarr_config:
   bazarr_config:
   syncthing_config:
+  immich_postgres:
+  immich_model-cache:
