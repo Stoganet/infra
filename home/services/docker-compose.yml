@@ -440,7 +440,7 @@ services:
     image: ghcr.io/immich-app/immich-server:release
     container_name: immich-server
     restart: unless-stopped
-    mem_limit: 384m
+    mem_limit: 768m
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -450,9 +450,9 @@ services:
       - SETUID
       - SETGID
       - DAC_OVERRIDE
-    command: ['start.sh', 'immich']
     volumes:
-      - /var/lib/nextcloud/data/admin/files/Photos:/usr/src/app/upload/library:ro
+      - immich_upload:/usr/src/app/upload
+      - /var/lib/nextcloud/data/admin/files/Photos:/mnt/nextcloud/photos:ro
     environment:
       - DB_HOSTNAME=immich-postgres
       - DB_USERNAME=postgres
@@ -466,49 +466,12 @@ services:
         condition: service_healthy
     networks:
       - internal
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/server-info/ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.immich.rule=Host(`photos.${DOMAIN}`)"
       - "traefik.http.routers.immich.entrypoints=websecure"
       - "traefik.http.routers.immich.tls.certresolver=letsencrypt"
-      - "traefik.http.services.immich.loadbalancer.server.port=3001"
-
-  immich-microservices:
-    image: ghcr.io/immich-app/immich-server:release
-    container_name: immich-microservices
-    restart: unless-stopped
-    mem_limit: 384m
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - CHOWN
-      - SETUID
-      - SETGID
-      - DAC_OVERRIDE
-    command: ['start.sh', 'microservices']
-    volumes:
-      - /var/lib/nextcloud/data/admin/files/Photos:/usr/src/app/upload/library:ro
-    environment:
-      - DB_HOSTNAME=immich-postgres
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=${IMMICH_DB_PASSWORD}
-      - DB_DATABASE_NAME=immich
-      - REDIS_HOSTNAME=immich-redis
-    depends_on:
-      immich-postgres:
-        condition: service_healthy
-      immich-redis:
-        condition: service_healthy
-    networks:
-      - internal
+      - "traefik.http.services.immich.loadbalancer.server.port=2283"
 
   immich-machine-learning:
     image: ghcr.io/immich-app/immich-machine-learning:release
@@ -546,4 +509,5 @@ volumes:
   bazarr_config:
   syncthing_config:
   immich_postgres:
+  immich_upload:
   immich_model-cache:
