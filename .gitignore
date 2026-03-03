@@ -7,8 +7,10 @@ target
 .DS_Store
 .claude
 .vscode
+backup.env
+services.env
+vps.env
 home/homed/config.toml
-home/backup/backup.env
 home/services/traefik/traefik.yml
 vps/authelia/secrets/
 vps/authelia/users_database.yml

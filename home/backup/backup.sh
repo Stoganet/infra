@@ -48,6 +48,33 @@ check_disk_space() {
     return 0
 }
 
+dump_databases() {
+    local dump_dir="$1"
+    mkdir -p "$dump_dir"
+
+    log "Dumping databases..."
+
+    if docker ps --format '{{.Names}}' | grep -q '^postgres$'; then
+        log "  Dumping Nextcloud PostgreSQL..."
+        if docker exec postgres pg_dumpall -U postgres > "$dump_dir/postgres_nextcloud.sql" 2>/dev/null; then
+            log "  Nextcloud PostgreSQL dump: OK"
+        else
+            log "  Warning: Nextcloud PostgreSQL dump failed"
+        fi
+    fi
+
+    if docker ps --format '{{.Names}}' | grep -q '^immich-postgres$'; then
+        log "  Dumping Immich PostgreSQL..."
+        if docker exec immich-postgres pg_dumpall -U postgres > "$dump_dir/postgres_immich.sql" 2>/dev/null; then
+            log "  Immich PostgreSQL dump: OK"
+        else
+            log "  Warning: Immich PostgreSQL dump failed"
+        fi
+    fi
+
+    log "Database dumps completed"
+}
+
 cleanup() {
     if mountpoint -q "$BACKUP_MOUNT" 2>/dev/null; then
         log "Unmounting $BACKUP_MOUNT"
@@ -70,12 +97,14 @@ fi
 source "$CONFIG_FILE"
 
 : "${BACKUP_DRIVE_UUID:?BACKUP_DRIVE_UUID not set in $CONFIG_FILE}"
-: "${BACKUP_MOUNT:=/mnt/backup}"
+: "${BACKUP_MOUNT:=/mnt/samsung}"
 : "${BACKUP_KEYFILE:=/etc/backup/backup.key}"
-: "${BACKUP_SOURCES:?BACKUP_SOURCES not set in $CONFIG_FILE}"
 : "${ALERT_ON_MISSING:=false}"
 : "${MIN_DISK_SPACE_GB:=10}"
 : "${VERIFY_BACKUP:=true}"
+: "${DOCKER_VOLUME_PATH:=/var/lib/docker/volumes}"
+: "${COMPOSE_PROJECT:=services}"
+: "${DB_DUMP_DIR:=/var/lib/backups/db_dumps}"
 
 DRIVE_PATH="/dev/disk/by-uuid/$BACKUP_DRIVE_UUID"
 
@@ -134,43 +163,107 @@ if ! check_disk_space "$BACKUP_MOUNT" "$MIN_DISK_SPACE_GB"; then
     log "Continuing backup despite low disk space"
 fi
 
+dump_databases "$DB_DUMP_DIR"
+
 TOTAL_FILES=0
 FAILED=0
 VERIFIED=0
 
-for SOURCE in $BACKUP_SOURCES; do
-    if [ ! -d "$SOURCE" ]; then
-        log "Warning: Source not found, skipping: $SOURCE"
-        continue
-    fi
+CRITICAL_SOURCES="
+$DB_DUMP_DIR
+$DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_vaultwarden_data/_data
+$DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_traefik_certs/_data
+"
 
-    DIRNAME=$(basename "$SOURCE")
-    DEST="$BACKUP_MOUNT/$DIRNAME"
+USER_DATA_SOURCES="${BACKUP_USER_DATA:-}"
 
-    log "Copying $SOURCE -> $DEST"
+CONFIG_SOURCES="
+$DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_jellyfin_config/_data
+$DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_sonarr_config/_data
+$DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_radarr_config/_data
+$DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_prowlarr_config/_data
+$DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_bazarr_config/_data
+$DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_qbittorrent_config/_data
+$DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_syncthing_config/_data
+"
 
-    if OUTPUT=$(rclone copy "$SOURCE" "$DEST" --checksum --stats-one-line 2>&1); then
-        log "rclone output: $OUTPUT"
-        FILES=$(echo "$OUTPUT" | grep -oP 'Transferred:\s+\K\d+(?=\s*/|\s+/)' || echo "0")
-        FILES=${FILES:-0}
-        TOTAL_FILES=$((TOTAL_FILES + FILES))
-        log "Copied $FILES files from $DIRNAME"
+ENV_FILES="${BACKUP_ENV_FILES:-}"
 
-        if [ "$VERIFY_BACKUP" = "true" ]; then
-            log "Verifying $DIRNAME..."
-            if rclone check "$SOURCE" "$DEST" --checksum 2>/dev/null; then
-                log "Verified $DIRNAME: checksums match"
-                VERIFIED=$((VERIFIED + 1))
-            else
-                log "Warning: Verification failed for $DIRNAME"
-                send_alert "high" "Backup verification failed for $DIRNAME"
-            fi
+backup_sources() {
+    local category="$1"
+    local sources="$2"
+
+    log "=== Backing up: $category ==="
+
+    for SOURCE in $sources; do
+        SOURCE=$(echo "$SOURCE" | xargs)
+        [ -z "$SOURCE" ] && continue
+
+        if [ ! -d "$SOURCE" ]; then
+            log "  Skipping (not found): $SOURCE"
+            continue
         fi
-    else
-        log "Error: rclone failed for $SOURCE"
-        FAILED=1
-    fi
-done
+
+        DIRNAME=$(basename "$SOURCE")
+        PARENT=$(basename "$(dirname "$SOURCE")")
+        DEST="$BACKUP_MOUNT/$category/${PARENT}_${DIRNAME}"
+
+        log "  Copying $SOURCE -> $DEST"
+
+        if OUTPUT=$(rclone copy "$SOURCE" "$DEST" --checksum --stats-one-line 2>&1); then
+            FILES=$(echo "$OUTPUT" | grep -oP 'Transferred:\s+\K\d+(?=\s*/|\s+/)' || echo "0")
+            FILES=${FILES:-0}
+            TOTAL_FILES=$((TOTAL_FILES + FILES))
+
+            if [ "$VERIFY_BACKUP" = "true" ] && [ "$FILES" -gt 0 ]; then
+                if rclone check "$SOURCE" "$DEST" --checksum 2>/dev/null; then
+                    VERIFIED=$((VERIFIED + 1))
+                else
+                    log "  Warning: Verification failed for $DIRNAME"
+                fi
+            fi
+        else
+            log "  Error: rclone failed for $SOURCE"
+            FAILED=1
+        fi
+    done
+}
+
+backup_env_files() {
+    local files="$1"
+
+    [ -z "$files" ] && return
+
+    log "=== Backing up env files ==="
+    mkdir -p "$BACKUP_MOUNT/secrets"
+
+    for FILE in $files; do
+        FILE=$(echo "$FILE" | xargs)
+        [ -z "$FILE" ] && continue
+
+        if [ ! -f "$FILE" ]; then
+            log "  Skipping (not found): $FILE"
+            continue
+        fi
+
+        NAME=$(basename "$FILE")
+        log "  Copying $NAME"
+        if cp "$FILE" "$BACKUP_MOUNT/secrets/$NAME" 2>/dev/null; then
+            TOTAL_FILES=$((TOTAL_FILES + 1))
+        else
+            log "  Error: Failed to copy $NAME"
+            FAILED=1
+        fi
+    done
+}
+
+backup_sources "critical" "$CRITICAL_SOURCES"
+backup_sources "user_data" "$USER_DATA_SOURCES"
+backup_sources "configs" "$CONFIG_SOURCES"
+backup_env_files "$ENV_FILES"
+
+# Cleanup old database dumps
+find "$DB_DUMP_DIR" -name "*.sql" -mtime +7 -delete 2>/dev/null || true
 
 DURATION=$(( $(date +%s) - START_TIME ))
 MINUTES=$((DURATION / 60))
@@ -181,6 +274,6 @@ if [ "$FAILED" -eq 1 ]; then
     send_alert "high" "Backup completed with errors: ${TOTAL_FILES} files in ${MINUTES}m"
     exit 1
 else
-    log "Backup completed: ${TOTAL_FILES} files, ${VERIFIED} sources verified in ${MINUTES}m ${SECONDS}s"
-    send_alert "default" "Backup completed: ${TOTAL_FILES} files in ${MINUTES}m"
+    log "Backup completed: ${TOTAL_FILES} files, ${VERIFIED} verified in ${MINUTES}m ${SECONDS}s"
+    send_alert "default" "Backup OK: ${TOTAL_FILES} files in ${MINUTES}m"
 fi
