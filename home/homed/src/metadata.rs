@@ -157,6 +157,7 @@ pub async fn run_metadata(
                 .send(FileEvent::Failed {
                     path,
                     error: "Unsupported media type".to_string(),
+                    pipeline: "photos",
                 })
                 .await;
             continue;

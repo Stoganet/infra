@@ -25,9 +25,6 @@ pub enum ScanRejection {
     #[error("file type mismatch: expected .{expected}, detected .{actual}")]
     TypeMismatch { expected: String, actual: String },
 
-    #[error("subtitle file is not valid UTF-8")]
-    InvalidSubtitleEncoding,
-
     #[error("failed to read file: {0}")]
     IoError(#[from] std::io::Error),
 }
@@ -88,13 +85,7 @@ pub async fn check_file_type(path: &Path) -> Result<(), ScanRejection> {
             expected: extension,
             actual: kind.extension().to_string(),
         }),
-        None if SUBTITLE_EXTS.contains(&extension.as_str()) => {
-            if std::str::from_utf8(bytes).is_ok() {
-                Ok(())
-            } else {
-                Err(ScanRejection::InvalidSubtitleEncoding)
-            }
-        }
+        None if SUBTITLE_EXTS.contains(&extension.as_str()) => Ok(()),
         // Some older encodings might have non-standard headers that infer can't identify
         // so for now just let them through
         None => Ok(()),
@@ -233,16 +224,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_binary_subtitle_rejected() {
+    async fn test_non_utf8_subtitle_passes() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("bad.srt");
-        tokio::fs::write(&path, &[0xFF, 0xFE, 0x00, 0x80, 0xC0])
-            .await
-            .unwrap();
-        let result = check_file_type(&path).await;
-        assert!(matches!(
-            result,
-            Err(ScanRejection::InvalidSubtitleEncoding)
-        ));
+        let path = dir.path().join("french.srt");
+        // Latin-1 encoded "1\n00:00:01,000 --> 00:00:02,000\nCafé"
+        let latin1 = b"1\n00:00:01,000 --> 00:00:02,000\nCaf\xe9";
+        tokio::fs::write(&path, latin1).await.unwrap();
+        assert!(check_file_type(&path).await.is_ok());
     }
 }

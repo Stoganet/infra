@@ -61,6 +61,7 @@ pub async fn run_scanner(
                     .send(FileEvent::Failed {
                         path,
                         error: rejection.to_string(),
+                        pipeline: "media",
                     })
                     .await;
                 continue;
@@ -92,6 +93,7 @@ pub async fn run_scanner(
                 .send(FileEvent::Failed {
                     path,
                     error: rejection.to_string(),
+                    pipeline: "media",
                 })
                 .await;
             continue;

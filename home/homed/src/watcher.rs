@@ -47,6 +47,7 @@ pub enum FileEvent {
     Failed {
         path: PathBuf,
         error: String,
+        pipeline: &'static str,
     },
 }
 

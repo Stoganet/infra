@@ -17,7 +17,7 @@ pub async fn send_alert(
     Ok(())
 }
 
-pub async fn send_batch_alert(
+pub async fn send_photos_alert(
     client: &reqwest::Client,
     config: &AlertsConfig,
     organized: usize,
@@ -53,6 +53,30 @@ pub async fn send_batch_alert(
         if failed.len() > 5 {
             message.push_str(&format!("\n… and {} more", failed.len() - 5));
         }
+    }
+
+    if let Err(e) = send_alert(client, config, &message).await {
+        warn!(error = %e, "failed to send ntfy alert");
+    }
+}
+
+pub async fn send_media_alert(
+    client: &reqwest::Client,
+    config: &AlertsConfig,
+    failed: &[(String, String)],
+) {
+    if !config.enabled || failed.is_empty() {
+        return;
+    }
+
+    let mut message = format!("Media: {} quarantined", failed.len());
+
+    message.push_str("\n\nErrors:");
+    for (path, error) in failed.iter().take(5) {
+        message.push_str(&format!("\n• {}: {}", path, error));
+    }
+    if failed.len() > 5 {
+        message.push_str(&format!("\n… and {} more", failed.len() - 5));
     }
 
     if let Err(e) = send_alert(client, config, &message).await {

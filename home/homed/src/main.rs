@@ -17,7 +17,7 @@ use tokio::time::Instant;
 use tracing::{error, info, warn};
 use watcher::FileEvent;
 
-use alerts::send_batch_alert;
+use alerts::{send_media_alert, send_photos_alert};
 use nextcloud::scan_directories;
 
 const BATCH_QUIET_PERIOD: Duration = Duration::from_secs(30);
@@ -44,7 +44,8 @@ async fn main() -> anyhow::Result<()> {
 
     let mut organized_count = 0usize;
     let mut unsorted_count = 0usize;
-    let mut failed_files: Vec<(String, String)> = Vec::new();
+    let mut photos_failed: Vec<(String, String)> = Vec::new();
+    let mut media_failed: Vec<(String, String)> = Vec::new();
     let mut scan_dirs: HashSet<PathBuf> = HashSet::new();
     let mut last_event_time: Option<Instant> = None;
 
@@ -67,14 +68,19 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                     FileEvent::Unsorted { .. } => unsorted_count += 1,
-                    FileEvent::Failed { path, error } => {
-                        failed_files.push((
+                    FileEvent::Failed { path, error, pipeline } => {
+                        let entry = (
                             path.file_name()
                                 .and_then(|n| n.to_str())
                                 .unwrap_or("unknown")
                                 .to_string(),
                             error.clone(),
-                        ));
+                        );
+                        if *pipeline == "media" {
+                            media_failed.push(entry);
+                        } else {
+                            photos_failed.push(entry);
+                        }
                     }
                     _ => {}
                 }
@@ -85,16 +91,18 @@ async fn main() -> anyhow::Result<()> {
                     scan_directories(&nextcloud_config, &scan_dirs).await;
                     scan_dirs.clear();
 
-                    send_batch_alert(
+                    send_photos_alert(
                         &http_client,
                         &alerts_config,
                         organized_count,
                         unsorted_count,
-                        &failed_files,
+                        &photos_failed,
                     ).await;
+                    send_media_alert(&http_client, &alerts_config, &media_failed).await;
                     organized_count = 0;
                     unsorted_count = 0;
-                    failed_files.clear();
+                    photos_failed.clear();
+                    media_failed.clear();
                     last_event_time = None;
                 }
             }
@@ -102,15 +110,14 @@ async fn main() -> anyhow::Result<()> {
                 info!("received shutdown signal, draining pipelines");
                 scan_directories(&nextcloud_config, &scan_dirs).await;
 
-                if organized_count > 0 || unsorted_count > 0 || !failed_files.is_empty() {
-                    send_batch_alert(
-                        &http_client,
-                        &alerts_config,
-                        organized_count,
-                        unsorted_count,
-                        &failed_files,
-                    ).await;
-                }
+                send_photos_alert(
+                    &http_client,
+                    &alerts_config,
+                    organized_count,
+                    unsorted_count,
+                    &photos_failed,
+                ).await;
+                send_media_alert(&http_client, &alerts_config, &media_failed).await;
                 shutdown_tx.send(()).ok();
                 break;
             }
@@ -270,8 +277,8 @@ fn log_event(event: &FileEvent) {
                 "no valid date, moving to unsorted"
             );
         }
-        FileEvent::Failed { path, error } => {
-            warn!(path = %path.display(), error, "processing failed");
+        FileEvent::Failed { path, error, pipeline } => {
+            warn!(path = %path.display(), pipeline, error, "processing failed");
         }
     }
 }

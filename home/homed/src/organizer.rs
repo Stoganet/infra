@@ -159,6 +159,7 @@ async fn handle_unsorted(
             .send(FileEvent::Failed {
                 path: path.to_path_buf(),
                 error: "No valid date and unsorted_dir not configured".to_string(),
+                pipeline: "photos",
             })
             .await;
         return Ok(());
@@ -195,6 +196,7 @@ async fn handle_unsorted(
                 .send(FileEvent::Failed {
                     path: path.to_path_buf(),
                     error: format!("Failed to move to unsorted: {}", e),
+                    pipeline: "photos",
                 })
                 .await;
         }
@@ -262,6 +264,7 @@ pub async fn run_organizer(
                             .send(FileEvent::Failed {
                                 path,
                                 error: format!("Failed to organize: {}", e),
+                                pipeline: "photos",
                             })
                             .await;
                     }
