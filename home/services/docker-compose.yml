@@ -5,6 +5,9 @@ services:
     restart: unless-stopped
     env_file: .env
     mem_limit: 256m
+    dns:
+      - 9.9.9.9
+      - 1.1.1.1
     security_opt:
       - no-new-privileges:true
     ports:
@@ -20,7 +23,7 @@ services:
     networks:
       - internal
     healthcheck:
-      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      test: ["CMD", "wget", "-qO-", "--no-check-certificate", "https://localhost:443/ping"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -79,6 +82,9 @@ services:
     container_name: nextcloud
     restart: unless-stopped
     mem_limit: 1gb
+    dns:
+      - 9.9.9.9
+      - 1.1.1.1
     security_opt:
       - no-new-privileges:true
     depends_on:
@@ -117,6 +123,9 @@ services:
     user: ${PUID}:${PGID}
     restart: unless-stopped
     mem_limit: 1.5g
+    dns:
+      - 9.9.9.9
+      - 1.1.1.1
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -154,6 +163,9 @@ services:
     container_name: gluetun
     restart: unless-stopped
     mem_limit: 256m
+    dns:
+      - 9.9.9.9
+      - 1.1.1.1
     cap_add:
       - NET_ADMIN
     devices:
@@ -209,6 +221,9 @@ services:
     container_name: prowlarr
     restart: unless-stopped
     mem_limit: 256m
+    dns:
+      - 9.9.9.9
+      - 1.1.1.1
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -238,6 +253,9 @@ services:
     container_name: flaresolverr
     restart: unless-stopped
     mem_limit: 512m
+    dns:
+      - 9.9.9.9
+      - 1.1.1.1
     security_opt:
       - no-new-privileges:true
     environment:
@@ -251,6 +269,9 @@ services:
     container_name: sonarr
     restart: unless-stopped
     mem_limit: 384m
+    dns:
+      - 9.9.9.9
+      - 1.1.1.1
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -281,6 +302,9 @@ services:
     container_name: radarr
     restart: unless-stopped
     mem_limit: 384m
+    dns:
+      - 9.9.9.9
+      - 1.1.1.1
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -311,6 +335,9 @@ services:
     container_name: bazarr
     restart: unless-stopped
     mem_limit: 384m
+    dns:
+      - 9.9.9.9
+      - 1.1.1.1
     security_opt:
       - no-new-privileges:true
     cap_drop:
