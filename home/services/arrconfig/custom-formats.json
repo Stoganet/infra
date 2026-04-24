@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Multi-Language Reject",
+    "includeCustomFormatWhenRenaming": false,
+    "specifications": [
+      {
+        "name": "German Dual-Language Scene",
+        "implementation": "ReleaseTitleSpecification",
+        "negate": false,
+        "required": false,
+        "fields": [
+          {"order": 0, "name": "value", "value": "\\.DL\\."}
+        ]
+      }
+    ]
+  }
+]

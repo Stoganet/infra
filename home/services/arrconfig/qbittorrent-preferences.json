@@ -1,0 +1,18 @@
+{
+  "_note": "Keys prefixed with _ are comments and are ignored by configure-arr.sh",
+  "_ref": "https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#set-application-preferences",
+
+  "_section_peer_discovery": "Disable all local/DHT peer discovery — traffic must stay inside VPN",
+  "dht": false,
+  "pex": false,
+  "lsd": false,
+  "upnp": false,
+  "random_port": false,
+
+  "_section_webui_security": "WebUI hardening",
+  "web_ui_csrf_protection_enabled": true,
+  "web_ui_clickjacking_protection_enabled": true,
+  "web_ui_secure_cookie_enabled": true,
+  "web_ui_max_auth_fail_count": 5,
+  "web_ui_ban_duration": 3600
+}

@@ -1,0 +1,16 @@
+[
+  {"name": "HDTV-720p",    "minSize": 0, "maxSize": 5},
+  {"name": "WEBDL-720p",   "minSize": 0, "maxSize": 5},
+  {"name": "WEBRip-720p",  "minSize": 0, "maxSize": 5},
+  {"name": "Bluray-720p",  "minSize": 0, "maxSize": 7},
+  {"name": "HDTV-1080p",   "minSize": 0, "maxSize": 10},
+  {"name": "WEBDL-1080p",  "minSize": 0, "maxSize": 15},
+  {"name": "WEBRip-1080p", "minSize": 0, "maxSize": 15},
+  {"name": "Bluray-1080p", "minSize": 0, "maxSize": 30},
+  {"name": "Remux-1080p",  "minSize": 0, "maxSize": 50},
+  {"name": "HDTV-2160p",   "minSize": 0, "maxSize": 20},
+  {"name": "WEBDL-2160p",  "minSize": 0, "maxSize": 30},
+  {"name": "WEBRip-2160p", "minSize": 0, "maxSize": 30},
+  {"name": "Bluray-2160p", "minSize": 0, "maxSize": 70},
+  {"name": "Remux-2160p",  "minSize": 0, "maxSize": 150}
+]
