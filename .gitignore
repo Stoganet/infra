@@ -1,5 +1,7 @@
 .env
 *.log
+package-lock.json
+node_modules/
 debug
 target
 **/*.rs.bk

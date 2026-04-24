@@ -379,4 +379,3 @@ volumes:
   sonarr_config:
   radarr_config:
   bazarr_config:
-  syncthing_config:

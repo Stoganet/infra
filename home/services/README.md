@@ -32,7 +32,6 @@ Traefik             Services
 | **Traefik** | Reverse proxy with automatic wildcard TLS via DNS-01 |
 | **Nextcloud** | Cloud storage and photo backup (PostgreSQL backend) |
 | **Jellyfin** | Media server with Intel Quick Sync hardware transcoding |
-| **Vaultwarden** | Bitwarden-compatible password manager |
 | **qBittorrent** | Torrent client, all traffic routed through Gluetun VPN |
 | **Sonarr / Radarr** | TV and movie automation |
 | **Prowlarr** | Indexer manager for Sonarr/Radarr |

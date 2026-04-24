@@ -258,15 +258,6 @@ echo "NetBird VPN binding"
 echo "Run 'ip addr show wt0 | grep inet' to find your NetBird IP"
 [ -z "${NETBIRD_IP:-}" ] && read -p "NetBird IP (e.g., 100.64.x.x): " NETBIRD_IP
 
-if [ -z "${ADMIN_TOKEN:-}" ]; then
-    echo ""
-    echo "ADMIN_TOKEN not set. After starting containers, generate it with:"
-    echo "  docker exec -it vaultwarden /vaultwarden hash"
-    echo "Then add to .env: ADMIN_TOKEN='<generated-hash>'"
-    echo "And restart: docker compose restart vaultwarden"
-    ADMIN_TOKEN=""
-fi
-
 REAL_UID=$(id -u "$REAL_USER")
 REAL_GID=$(id -g "$REAL_USER")
 
@@ -295,8 +286,6 @@ VPN_SERVER_COUNTRIES=$VPN_SERVER_COUNTRIES
 
 NETBIRD_IP=$NETBIRD_IP
 EOF
-
-printf "ADMIN_TOKEN='%s'\n" "$ADMIN_TOKEN" >> "$SCRIPT_DIR/.env"
 
 chmod 600 "$SCRIPT_DIR/.env"
 chown "$REAL_USER:$REAL_USER" "$SCRIPT_DIR/.env"
@@ -368,12 +357,12 @@ echo ""
 echo "Services will be available at:"
 echo "  - https://nextcloud.$DOMAIN"
 echo "  - https://jellyfin.$DOMAIN"
-echo "  - https://vault.$DOMAIN"
 echo "  - https://qbit.$DOMAIN"
 echo "  - https://prowlarr.$DOMAIN"
 echo "  - https://sonarr.$DOMAIN"
 echo "  - https://radarr.$DOMAIN"
 echo "  - https://bazarr.$DOMAIN"
 echo ""
+echo "Next: run ./configure-arr.sh to apply arr stack settings."
 echo "Credentials saved in: $SCRIPT_DIR/.env"
 echo "================================================"
