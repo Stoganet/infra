@@ -23,8 +23,10 @@ docker run -d \
   --name whisper \
   --restart no \
   -p 9000:9000 \
+  -e ASR_ENGINE=openai_whisper \
   -e ASR_MODEL=large-v3 \
-  onerahmet/openai-whisper-asr-webservice:latest-cpu
+  -v $HOME/.cache/whisper:/root/.cache/ \
+  onerahmet/openai-whisper-asr-webservice:latest
 ```
 
 - `--restart no` keeps it manual — only runs when you start it
