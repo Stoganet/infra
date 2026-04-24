@@ -1,6 +1,5 @@
 .env
 *.log
-docs/
 package-lock.json
 node_modules/
 debug
