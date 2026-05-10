@@ -205,8 +205,7 @@ backup_sources() {
         fi
 
         DIRNAME=$(basename "$SOURCE")
-        PARENT=$(basename "$(dirname "$SOURCE")")
-        DEST="$BACKUP_MOUNT/$category/${PARENT}_${DIRNAME}"
+        DEST="$BACKUP_MOUNT/$DIRNAME"
 
         log "  Copying $SOURCE -> $DEST"
 
