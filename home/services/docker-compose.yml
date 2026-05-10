@@ -363,6 +363,31 @@ services:
       - "traefik.http.routers.bazarr.tls.certresolver=letsencrypt"
       - "traefik.http.services.bazarr.loadbalancer.server.port=6767"
 
+  jellyseerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: jellyseerr
+    restart: unless-stopped
+    init: true
+    mem_limit: 512m
+    dns:
+      - 9.9.9.9
+      - 1.1.1.1
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - LOG_LEVEL=info
+      - TZ=${TZ}
+    volumes:
+      - jellyseerr_config:/app/config
+    networks:
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.seerr.rule=Host(`seerr.${DOMAIN}`)"
+      - "traefik.http.routers.seerr.entrypoints=websecure"
+      - "traefik.http.routers.seerr.tls.certresolver=letsencrypt"
+      - "traefik.http.services.seerr.loadbalancer.server.port=5055"
+
 networks:
   internal:
     driver: bridge
@@ -379,3 +404,4 @@ volumes:
   sonarr_config:
   radarr_config:
   bazarr_config:
+  jellyseerr_config:
