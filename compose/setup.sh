@@ -168,38 +168,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mkdir -p "$SCRIPT_DIR/traefik/dynamic"
 chown -R "$REAL_USER:$REAL_USER" "$SCRIPT_DIR/traefik"
 
-mkdir -p /var/lib/nextcloud/data
-chown -R "$REAL_USER:$REAL_USER" /var/lib/nextcloud/data 2>/dev/null || true
-
 mkdir -p /mnt/wd/media/{downloads/movies,downloads/tv,quarantine,Movies,TV}
 chown -R "$REAL_USER:$REAL_USER" /mnt/wd/media 2>/dev/null || true
 
 echo ""
-echo "Installing homed (file watcher and organizer)..."
-HOMED_REPO="koinsaari/homeserver"
-HOMED_URL="https://github.com/$HOMED_REPO/releases/latest/download/homed"
-HOMED_DIR="/opt/homed"
-
-mkdir -p "$HOMED_DIR"
-
-if curl -fL -o /tmp/homed "$HOMED_URL"; then
-    install -m 755 /tmp/homed "$HOMED_DIR/homed"
-    rm /tmp/homed
-
-    if [ ! -f "$HOMED_DIR/config.toml" ]; then
-        cp "$SCRIPT_DIR/../homed/config.example.toml" "$HOMED_DIR/config.toml"
-        echo "Copied config.example.toml to $HOMED_DIR/config.toml"
-        echo "IMPORTANT: Edit $HOMED_DIR/config.toml with your actual values"
-    fi
-
-    cp "$SCRIPT_DIR/../homed/homed.service" /etc/systemd/system/homed.service
-    systemctl daemon-reload
-    systemctl enable homed
-    echo "homed installed. It will start after config is edited."
-else
-    echo "Warning: No homed release found. Push code to main to trigger a build."
-fi
-
+echo "stogad (file watcher / organizer) is maintained in a separate repo."
+echo "Install separately from: https://github.com/Stoganet/stogad"
 echo ""
 echo "Generating .env file..."
 
@@ -236,14 +210,6 @@ DNS_TOKEN="${!DNS_TOKEN_VAR:-}"
 [ -z "$DNS_TOKEN" ] && read -p "DNS API token ($DNS_TOKEN_VAR): " DNS_TOKEN
 
 echo ""
-[ -z "${POSTGRES_PASSWORD:-}" ] && read -p "PostgreSQL password: " POSTGRES_PASSWORD
-[ -z "${NEXTCLOUD_ADMIN_USER:-}" ] && read -p "Nextcloud admin username: " NEXTCLOUD_ADMIN_USER
-if [ -z "${NEXTCLOUD_ADMIN_PASSWORD:-}" ]; then
-    read -s -p "Nextcloud admin password: " NEXTCLOUD_ADMIN_PASSWORD
-    echo ""
-fi
-
-echo ""
 echo "VPN for qBittorrent (routes torrent traffic through VPN)"
 [ -z "${VPN_PROVIDER:-}" ] && read -p "VPN provider (default: protonvpn): " VPN_PROVIDER
 VPN_PROVIDER=${VPN_PROVIDER:-protonvpn}
@@ -273,11 +239,6 @@ RENDER_GID=$RENDER_GID
 
 DNS_PROVIDER=$DNS_PROVIDER
 $DNS_TOKEN_VAR=$DNS_TOKEN
-
-POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-
-NEXTCLOUD_ADMIN_USER=$NEXTCLOUD_ADMIN_USER
-NEXTCLOUD_ADMIN_PASSWORD=$NEXTCLOUD_ADMIN_PASSWORD
 
 VPN_PROVIDER=$VPN_PROVIDER
 VPN_TYPE=$VPN_TYPE
@@ -317,7 +278,7 @@ providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
-    network: home_internal
+    network: services_internal
   file:
     directory: /etc/traefik/dynamic
     watch: true
@@ -355,13 +316,14 @@ echo "  2. Verify NetBird: netbird status"
 echo "  3. Start services: docker compose up -d"
 echo ""
 echo "Services will be available at:"
-echo "  - https://nextcloud.$DOMAIN"
 echo "  - https://jellyfin.$DOMAIN"
+echo "  - https://seerr.$DOMAIN"
 echo "  - https://qbit.$DOMAIN"
 echo "  - https://prowlarr.$DOMAIN"
 echo "  - https://sonarr.$DOMAIN"
 echo "  - https://radarr.$DOMAIN"
 echo "  - https://bazarr.$DOMAIN"
+echo "  - https://portainer.$DOMAIN"
 echo ""
 echo "Next: run ./configure-arr.sh to apply arr stack settings."
 echo "Credentials saved in: $SCRIPT_DIR/.env"

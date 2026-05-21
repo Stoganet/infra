@@ -48,33 +48,6 @@ check_disk_space() {
     return 0
 }
 
-dump_databases() {
-    local dump_dir="$1"
-    mkdir -p "$dump_dir"
-
-    log "Dumping databases..."
-
-    if docker ps --format '{{.Names}}' | grep -q '^postgres$'; then
-        log "  Dumping Nextcloud PostgreSQL..."
-        if docker exec postgres pg_dumpall -U postgres > "$dump_dir/postgres_nextcloud.sql" 2>/dev/null; then
-            log "  Nextcloud PostgreSQL dump: OK"
-        else
-            log "  Warning: Nextcloud PostgreSQL dump failed"
-        fi
-    fi
-
-    if docker ps --format '{{.Names}}' | grep -q '^immich-postgres$'; then
-        log "  Dumping Immich PostgreSQL..."
-        if docker exec immich-postgres pg_dumpall -U postgres > "$dump_dir/postgres_immich.sql" 2>/dev/null; then
-            log "  Immich PostgreSQL dump: OK"
-        else
-            log "  Warning: Immich PostgreSQL dump failed"
-        fi
-    fi
-
-    log "Database dumps completed"
-}
-
 cleanup() {
     if mountpoint -q "$BACKUP_MOUNT" 2>/dev/null; then
         log "Unmounting $BACKUP_MOUNT"
@@ -104,7 +77,6 @@ source "$CONFIG_FILE"
 : "${VERIFY_BACKUP:=true}"
 : "${DOCKER_VOLUME_PATH:=/var/lib/docker/volumes}"
 : "${COMPOSE_PROJECT:=services}"
-: "${DB_DUMP_DIR:=/var/lib/backups/db_dumps}"
 
 DRIVE_PATH="/dev/disk/by-uuid/$BACKUP_DRIVE_UUID"
 
@@ -163,15 +135,11 @@ if ! check_disk_space "$BACKUP_MOUNT" "$MIN_DISK_SPACE_GB"; then
     log "Continuing backup despite low disk space"
 fi
 
-dump_databases "$DB_DUMP_DIR"
-
 TOTAL_FILES=0
 FAILED=0
 VERIFIED=0
 
 CRITICAL_SOURCES="
-$DB_DUMP_DIR
-$DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_vaultwarden_data/_data
 $DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_traefik_certs/_data
 "
 
@@ -184,7 +152,8 @@ $DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_radarr_config/_data
 $DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_prowlarr_config/_data
 $DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_bazarr_config/_data
 $DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_qbittorrent_config/_data
-$DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_syncthing_config/_data
+$DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_jellyseerr_config/_data
+$DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_portainer_data/_data
 "
 
 ENV_FILES="${BACKUP_ENV_FILES:-}"
@@ -260,9 +229,6 @@ backup_sources "critical" "$CRITICAL_SOURCES"
 backup_sources "user_data" "$USER_DATA_SOURCES"
 backup_sources "configs" "$CONFIG_SOURCES"
 backup_env_files "$ENV_FILES"
-
-# Cleanup old database dumps
-find "$DB_DUMP_DIR" -name "*.sql" -mtime +7 -delete 2>/dev/null || true
 
 DURATION=$(( $(date +%s) - START_TIME ))
 MINUTES=$((DURATION / 60))
