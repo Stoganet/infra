@@ -1,3 +1,5 @@
+name: services
+
 services:
   traefik:
     image: traefik:latest
@@ -55,67 +57,6 @@ services:
       - "traefik.http.routers.portainer.entrypoints=websecure"
       - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
-
-  postgres:
-    image: postgres:16-alpine
-    container_name: postgres
-    restart: unless-stopped
-    mem_limit: 384m
-    security_opt:
-      - no-new-privileges:true
-    environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=nextcloud
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-
-  nextcloud:
-    image: nextcloud:latest
-    container_name: nextcloud
-    restart: unless-stopped
-    mem_limit: 1gb
-    dns:
-      - 9.9.9.9
-      - 1.1.1.1
-    security_opt:
-      - no-new-privileges:true
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      - TZ=${TZ}
-      - POSTGRES_HOST=postgres
-      - POSTGRES_DB=nextcloud
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
-      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
-      - NEXTCLOUD_TRUSTED_DOMAINS=nextcloud.${DOMAIN}
-      - PHP_MEMORY_LIMIT=512M
-      - PHP_UPLOAD_LIMIT=16G
-    volumes:
-      - nextcloud_app:/var/www/html
-      - /var/lib/nextcloud/data:/var/www/html/data
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/status.php"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.nextcloud.rule=Host(`nextcloud.${DOMAIN}`)"
-      - "traefik.http.routers.nextcloud.entrypoints=websecure"
-      - "traefik.http.routers.nextcloud.tls.certresolver=letsencrypt"
 
   jellyfin:
     image: jellyfin/jellyfin:latest
@@ -395,8 +336,6 @@ networks:
 volumes:
   portainer_data:
   traefik_certs:
-  postgres_data:
-  nextcloud_app:
   jellyfin_config:
   jellyfin_cache:
   qbittorrent_config:

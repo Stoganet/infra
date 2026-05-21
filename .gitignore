@@ -1,18 +1,12 @@
 .env
 *.log
-package-lock.json
 node_modules/
-debug
-target
-**/*.rs.bk
 .idea/
 .DS_Store
 .claude
 .vscode
+
+# secrets
 backup.env
 services.env
-vps.env
-home/homed/config.toml
-home/services/traefik/traefik.yml
-vps/authelia/secrets/
-vps/authelia/users_database.yml
+compose/traefik/traefik.yml
