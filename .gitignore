@@ -1,12 +1,10 @@
 .env
 *.log
-node_modules/
 .idea/
 .DS_Store
-.claude
+.claude/
+.agents/
 .vscode
-
-# secrets
 backup.env
 services.env
 compose/traefik/traefik.yml
