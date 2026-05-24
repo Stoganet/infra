@@ -29,6 +29,7 @@ check_container() {
 check_container sonarr
 check_container radarr
 check_container gluetun
+check_container prowlarr
 
 # ── Detect API keys ────────────────────────────────────────────────────────────
 detect_key() {
@@ -38,6 +39,7 @@ detect_key() {
 
 SONARR_KEY="${SONARR_API_KEY:-$(detect_key sonarr)}"
 RADARR_KEY="${RADARR_API_KEY:-$(detect_key radarr)}"
+PROWLARR_KEY="${PROWLARR_API_KEY:-$(detect_key prowlarr)}"
 
 if [ -z "$SONARR_KEY" ]; then
     echo "Error: Could not read Sonarr API key. Is Sonarr fully initialised?"
@@ -47,14 +49,22 @@ if [ -z "$RADARR_KEY" ]; then
     echo "Error: Could not read Radarr API key. Is Radarr fully initialised?"
     exit 1
 fi
+if [ -z "$PROWLARR_KEY" ]; then
+    echo "Error: Could not read Prowlarr API key. Is Prowlarr fully initialised?"
+    exit 1
+fi
 
 echo "Configuring arr stack..."
-printf "  Sonarr key: %.8s...\n" "$SONARR_KEY"
-printf "  Radarr key: %.8s...\n" "$RADARR_KEY"
+printf "  Sonarr key:   %.8s...\n" "$SONARR_KEY"
+printf "  Radarr key:   %.8s...\n" "$RADARR_KEY"
+printf "  Prowlarr key: %.8s...\n" "$PROWLARR_KEY"
 echo ""
 
 # ── Run configuration via Python ───────────────────────────────────────────────
-export SONARR_KEY RADARR_KEY CONFIG_DIR
+export SONARR_KEY RADARR_KEY PROWLARR_KEY CONFIG_DIR
+export MAM_ID="${MAM_ID:-}"
+export QBIT_USERNAME="${QBIT_USERNAME:-}"
+export QBIT_PASSWORD="${QBIT_PASSWORD:-}"
 
 python3 - << 'PYEOF'
 import json, os, subprocess, sys
@@ -107,7 +117,7 @@ def load_json(filename):
 #    Radarr: GB total per movie file
 #    Sonarr: MB/min per episode (e.g. 150 MB/min × 45 min = 6.75 GB/episode)
 # ═══════════════════════════════════════════════════════════════════════════════
-print("[1/4] Applying quality size limits...")
+print("[1/5] Applying quality size limits...")
 
 def apply_quality_defs(app_fn, app_name, config_file):
     limits = {d["name"]: d for d in load_json(config_file)}
@@ -128,7 +138,7 @@ apply_quality_defs(sonarr, "Sonarr", "sonarr-quality-definitions.json")
 # ═══════════════════════════════════════════════════════════════════════════════
 # 2. Custom formats
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\n[2/4] Applying custom formats...")
+print("\n[2/5] Applying custom formats...")
 
 desired_formats = load_json("custom-formats.json")
 
@@ -162,7 +172,7 @@ sonarr_cf_ids = apply_custom_formats(sonarr, "Sonarr")
 #    language=Original: each title uses its TMDB original language, so French
 #    films get French audio and English films get English. Bazarr handles subs.
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\n[3/4] Applying quality profile settings...")
+print("\n[3/5] Applying quality profile settings...")
 
 def apply_profile_settings(app_fn, app_name, cf_ids):
     langs = app_fn("GET", "/language") or []
@@ -191,12 +201,92 @@ apply_profile_settings(sonarr, "Sonarr", sonarr_cf_ids)
 # ═══════════════════════════════════════════════════════════════════════════════
 # 4. qBittorrent preferences
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\n[4/4] Applying qBittorrent preferences...")
+print("\n[4/5] Applying qBittorrent preferences...")
 
 raw = load_json("qbittorrent-preferences.json")
 prefs = {k: v for k, v in raw.items() if not k.startswith("_")}
 qbit_set(prefs)
 print(f"  qBittorrent: {len(prefs)} settings applied")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 5. Prowlarr — qBittorrent download client and MAM indexer
+# ═══════════════════════════════════════════════════════════════════════════════
+print("\n[5/5] Configuring Prowlarr...")
+
+PROWLARR_KEY = os.environ["PROWLARR_KEY"]
+MAM_ID = os.environ.get("MAM_ID", "")
+QBIT_USERNAME = os.environ.get("QBIT_USERNAME", "")
+QBIT_PASSWORD = os.environ.get("QBIT_PASSWORD", "")
+
+def prowlarr(method, path, data=None):
+    args = [
+        "docker", "exec", "prowlarr",
+        "curl", "-sf", "-X", method,
+        f"http://localhost:9696/api/v1{path}",
+        "-H", f"X-Api-Key: {PROWLARR_KEY}",
+        "-H", "Content-Type: application/json",
+    ]
+    if data is not None:
+        args += ["-d", json.dumps(data)]
+    r = subprocess.run(args, capture_output=True, text=True)
+    if not r.stdout.strip():
+        return None
+    try:
+        return json.loads(r.stdout)
+    except json.JSONDecodeError:
+        print(f"  WARNING: unexpected response from prowlarr: {r.stdout[:200]}")
+        return None
+
+# qBittorrent download client
+existing_clients = prowlarr("GET", "/downloadclient") or []
+qbit_exists = any(c.get("implementation") == "QBittorrent" for c in existing_clients)
+if qbit_exists:
+    print("  Prowlarr: qBittorrent already configured")
+else:
+    schemas = prowlarr("GET", "/downloadclient/schema") or []
+    qbit_schema = next((s for s in schemas if s.get("implementation") == "QBittorrent"), None)
+    if qbit_schema:
+        for f in qbit_schema["fields"]:
+            if f["name"] == "host":
+                f["value"] = "gluetun"
+            elif f["name"] == "port":
+                f["value"] = 8080
+            elif f["name"] == "username" and QBIT_USERNAME:
+                f["value"] = QBIT_USERNAME
+            elif f["name"] == "password" and QBIT_PASSWORD:
+                f["value"] = QBIT_PASSWORD
+        qbit_schema["name"] = "qBittorrent"
+        qbit_schema["enable"] = True
+        result = prowlarr("POST", "/downloadclient", qbit_schema)
+        if result and result.get("id"):
+            print(f"  Prowlarr: qBittorrent added (id={result['id']})")
+        else:
+            print("  Prowlarr: ERROR adding qBittorrent")
+
+# MAM indexer
+if not MAM_ID:
+    print("  Prowlarr: MAM_ID not set in .env, skipping MyAnonamouse indexer")
+else:
+    existing_indexers = prowlarr("GET", "/indexer") or []
+    mam_exists = any("anonamouse" in i.get("name", "").lower() for i in existing_indexers)
+    if mam_exists:
+        print("  Prowlarr: MyAnonamouse already configured")
+    else:
+        schemas = prowlarr("GET", "/indexer/schema") or []
+        mam_schema = next((s for s in schemas if s.get("implementation") == "MyAnonamouse"), None)
+        if mam_schema:
+            for f in mam_schema["fields"]:
+                if f["name"] == "mamId":
+                    f["value"] = MAM_ID
+            mam_schema["name"] = "MyAnonamouse"
+            mam_schema["enable"] = True
+            mam_schema["appProfileId"] = 1
+            result = prowlarr("POST", "/indexer", mam_schema)
+            if result and result.get("id"):
+                print(f"  Prowlarr: MyAnonamouse added (id={result['id']})")
+            else:
+                print("  Prowlarr: ERROR adding MyAnonamouse indexer")
 
 print("\nDone.")
 PYEOF
@@ -216,6 +306,14 @@ if [ -z "${RADARR_API_KEY:-}" ]; then
         sed -i "s/^RADARR_API_KEY=.*/RADARR_API_KEY=$RADARR_KEY/" "$ENV_FILE"
     else
         echo "RADARR_API_KEY=$RADARR_KEY" >> "$ENV_FILE"
+    fi
+    KEYS_SAVED=$((KEYS_SAVED + 1))
+fi
+if [ -z "${PROWLARR_API_KEY:-}" ]; then
+    if grep -q "^PROWLARR_API_KEY=" "$ENV_FILE" 2>/dev/null; then
+        sed -i "s/^PROWLARR_API_KEY=.*/PROWLARR_API_KEY=$PROWLARR_KEY/" "$ENV_FILE"
+    else
+        echo "PROWLARR_API_KEY=$PROWLARR_KEY" >> "$ENV_FILE"
     fi
     KEYS_SAVED=$((KEYS_SAVED + 1))
 fi
