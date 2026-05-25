@@ -2,7 +2,7 @@ name: services
 
 services:
   traefik:
-    image: traefik:latest
+    image: traefik:v3@sha256:6b9cbca6fac42ab0075f5437d8dc1685cfd188626d8d515839ea94f8b6271c42
     container_name: traefik
     restart: unless-stopped
     env_file: .env
@@ -40,7 +40,7 @@ services:
       - "traefik.http.routers.traefik.service=api@internal"
 
   portainer:
-    image: portainer/portainer-ce:latest
+    image: portainer/portainer-ce:2.21.5@sha256:bd8f7a6d98e2a512e18272c38914abd1e92d663451f3c925d502a8557a3b92d7
     container_name: portainer
     restart: unless-stopped
     mem_limit: 256m
@@ -59,7 +59,7 @@ services:
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
 
   jellyfin:
-    image: jellyfin/jellyfin:latest
+    image: jellyfin/jellyfin:10.10.3@sha256:17c3a8d9dddb97789b5f37112840ebf96566442c14d4754193a6c2eb154bc221
     container_name: jellyfin
     user: ${PUID}:${PGID}
     restart: unless-stopped
@@ -100,7 +100,7 @@ services:
       - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
 
   gluetun:
-    image: qmcgaw/gluetun:latest
+    image: qmcgaw/gluetun:v3.40.0@sha256:2b42bfa046757145a5155acece417b65b4443c8033fb88661a8e9dcf7fda5a00
     container_name: gluetun
     restart: unless-stopped
     mem_limit: 256m
@@ -138,7 +138,7 @@ services:
       - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
 
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
+    image: lscr.io/linuxserver/qbittorrent:latest@sha256:eeea9f8a8cdde23555186843d26e8ded1222421f31f98a5cc1b50c2882ebcf4e
     container_name: qbittorrent
     restart: unless-stopped
     mem_limit: 512m
@@ -158,7 +158,7 @@ services:
       - /mnt/wd/media:/data
 
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:latest
+    image: lscr.io/linuxserver/prowlarr:latest@sha256:c9fe528f34b1fd3715438b6f6d6991d64e2965f2c055db36398bc66a0e7eab01
     container_name: prowlarr
     restart: unless-stopped
     mem_limit: 256m
@@ -190,7 +190,7 @@ services:
       - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
 
   flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr:latest
+    image: ghcr.io/flaresolverr/flaresolverr:v3.3.21@sha256:f104ee51e5124d83cf3be9b37480649355d223f7d8f9e453d0d5ef06c6e3b31b
     container_name: flaresolverr
     restart: unless-stopped
     mem_limit: 512m
@@ -206,7 +206,7 @@ services:
       - internal
 
   sonarr:
-    image: lscr.io/linuxserver/sonarr:latest
+    image: lscr.io/linuxserver/sonarr:latest@sha256:0b5c4803f92456fb9b65bae8375716ea120b4ea17b3cced7da32b63f0085782b
     container_name: sonarr
     restart: unless-stopped
     mem_limit: 384m
@@ -239,7 +239,7 @@ services:
       - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
 
   radarr:
-    image: lscr.io/linuxserver/radarr:latest
+    image: lscr.io/linuxserver/radarr:latest@sha256:079e48870584baf2a3e7e43e7ba6d3c834555931851a59c82c51cc792d285caf
     container_name: radarr
     restart: unless-stopped
     mem_limit: 384m
@@ -272,7 +272,7 @@ services:
       - "traefik.http.services.radarr.loadbalancer.server.port=7878"
 
   bazarr:
-    image: lscr.io/linuxserver/bazarr:latest
+    image: lscr.io/linuxserver/bazarr:latest@sha256:95f27692c3de6dbe130cd035d342d8138ec74ade7b62cfc52e11ae222c52c855
     container_name: bazarr
     restart: unless-stopped
     mem_limit: 384m
@@ -305,7 +305,7 @@ services:
       - "traefik.http.services.bazarr.loadbalancer.server.port=6767"
 
   jellyseerr:
-    image: ghcr.io/seerr-team/seerr:latest
+    image: ghcr.io/seerr-team/seerr:latest@sha256:c4cbd5121236ac2f70a843a0b920b68a27976be57917555f1c45b08a1e6b2aad
     container_name: jellyseerr
     restart: unless-stopped
     init: true
