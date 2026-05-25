@@ -1,0 +1,36 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "docker:pinDigests",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "timezone": "Europe/Helsinki",
+  "schedule": ["* 3-4 * * 6"],
+  "platformAutomerge": false,
+  "dependencyDashboard": true,
+  "packageRules": [
+    {
+      "matchManagers": ["docker-compose"],
+      "automerge": true,
+      "matchUpdateTypes": ["digest", "patch"]
+    },
+    {
+      "matchManagers": ["docker-compose"],
+      "matchPackageNames": ["qmcgaw/gluetun"],
+      "automerge": false,
+      "labels": ["review-needed"]
+    },
+    {
+      "matchManagers": ["docker-compose"],
+      "matchUpdateTypes": ["major", "minor"],
+      "automerge": false,
+      "labels": ["review-needed"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "automerge": true,
+      "matchUpdateTypes": ["digest", "patch", "minor"]
+    }
+  ]
+}
