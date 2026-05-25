@@ -67,6 +67,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
     exit 1
 fi
 
+# shellcheck disable=SC1090
 source "$CONFIG_FILE"
 
 : "${BACKUP_DRIVE_UUID:?BACKUP_DRIVE_UUID not set in $CONFIG_FILE}"
