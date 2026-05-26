@@ -3,42 +3,57 @@ name: Claude Code Review
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+  workflow_dispatch:
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       issues: read
       id-token: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 1
 
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@567fe954a4527e81f132d87d1bdbcc94f7737434 # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
+          track_progress: true
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
 
+            Read CLAUDE.md first, then review this pull request.
+
+            Post inline comments ONLY for issues that must be fixed before merging:
+            - Bugs or logic errors in shell scripts, compose config, or workflows
+            - Security vulnerabilities (secret exposure, command injection, missing strict host key checking, overly-broad GH Actions permissions, etc.)
+            - Direct violations of the architecture invariants documented in CLAUDE.md (e.g. WAN exposure, project name drift, qBittorrent network mode)
+            - Broken or unsafe deploy/rollback logic in bin/*.sh or deploy.yml
+
+            Do NOT comment on:
+            - Shell style or formatting — shellcheck already enforces this in CI
+            - Compose YAML syntax — `docker compose config -q` already enforces this in CI
+            - JSON syntax in arrconfig/ — `jq empty` already enforces this in CI
+            - Secret presence in repo — gitleaks already enforces this in CI
+            - Subjective preferences or minor readability suggestions
+            - Hypothetical future concerns without concrete evidence
+            - Documentation, unless CLAUDE.md explicitly requires it for this case
+
+            After reviewing, post a single top-level summary comment:
+            - If must-fix issues were found: list them briefly
+            - If no must-fix issues were found: explicitly state the PR looks good
+
+            Do not manufacture issues to appear thorough.
+          claude_args: |
+            --max-turns 20
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob"
