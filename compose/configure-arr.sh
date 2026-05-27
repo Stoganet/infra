@@ -10,7 +10,10 @@ ENV_FILE="$SCRIPT_DIR/.env"
 
 # ── Load .env ──────────────────────────────────────────────────────────────────
 if [ -f "$ENV_FILE" ]; then
-    set -a; source "$ENV_FILE"; set +a
+    set -a
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"
+    set +a
 else
     echo "Warning: .env not found. API keys will be auto-detected from containers."
 fi

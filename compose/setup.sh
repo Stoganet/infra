@@ -23,7 +23,7 @@ echo "  - UFW firewall"
 echo "  - Traefik directories"
 echo "  - Media library structure (/mnt/wd)"
 echo ""
-read -p "Continue with installation? (y/n) " -r
+read -rp "Continue with installation? (y/n) " -r
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 0
 fi
@@ -39,7 +39,7 @@ echo "[2/8] Intel Quick Sync GPU setup..."
 INSTALL_GPU="n"
 if [ -d /dev/dri ]; then
     echo "Detected /dev/dri - Intel GPU may be available"
-    read -p "Install Intel Quick Sync drivers for Jellyfin transcoding? (y/n) " -r INSTALL_GPU
+    read -rp "Install Intel Quick Sync drivers for Jellyfin transcoding? (y/n) " -r INSTALL_GPU
 fi
 
 if [[ $INSTALL_GPU =~ ^[Yy]$ ]]; then
@@ -117,7 +117,7 @@ echo ""
 if netbird status 2>/dev/null | grep -q "Connected"; then
     echo "NetBird is already connected."
 else
-    read -p "Configure NetBird VPN now? (y/n) " -r SETUP_NETBIRD
+    read -rp "Configure NetBird VPN now? (y/n) " -r SETUP_NETBIRD
     if [[ $SETUP_NETBIRD =~ ^[Yy]$ ]]; then
         echo ""
         echo "================================================"
@@ -128,7 +128,7 @@ else
         echo "  sudo netbird up"
         echo ""
         echo "If it gets stuck, press Ctrl+C here to skip."
-        read -t 300 -p "Press ENTER when connected (5 min timeout)..." || echo "Timeout - skipping NetBird"
+        read -rt 300 -p "Press ENTER when connected (5 min timeout)..." || echo "Timeout - skipping NetBird"
 
         if netbird status 2>/dev/null | grep -q "Connected"; then
             echo "NetBird connected successfully!"
@@ -143,7 +143,7 @@ fi
 echo ""
 echo "[8/8] Configuring UFW firewall (zero-trust)..."
 if ! ufw status | grep -qw "active"; then
-    read -p "Enter your LAN subnet (e.g., 192.168.1.0/24): " LAN_SUBNET
+    read -rp "Enter your LAN subnet (e.g., 192.168.1.0/24): " LAN_SUBNET
     LAN_SUBNET=${LAN_SUBNET:-192.168.1.0/24}
 
     ufw --force reset
@@ -181,20 +181,20 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
     echo "Existing .env found, loading values."
     cp "$SCRIPT_DIR/.env" "$SCRIPT_DIR/.env.bak"
     set -a
-    # shellcheck disable=SC1090
+    # shellcheck disable=SC1090,SC1091
     source "$SCRIPT_DIR/.env"
     set +a
 fi
 
-[ -z "${DOMAIN:-}" ]     && read -p "Base domain (e.g., example.com): " DOMAIN
-[ -z "${ACME_EMAIL:-}" ] && read -p "ACME email for Let's Encrypt: " ACME_EMAIL
-[ -z "${TZ:-}" ]         && read -p "Timezone (default: Europe/Helsinki): " TZ
+[ -z "${DOMAIN:-}" ]     && read -rp "Base domain (e.g., example.com): " DOMAIN
+[ -z "${ACME_EMAIL:-}" ] && read -rp "ACME email for Let's Encrypt: " ACME_EMAIL
+[ -z "${TZ:-}" ]         && read -rp "Timezone (default: Europe/Helsinki): " TZ
 TZ=${TZ:-Europe/Helsinki}
 
 echo ""
 echo "DNS Provider for ACME DNS-01 challenge"
 echo "See: https://go-acme.github.io/lego/dns/"
-[ -z "${DNS_PROVIDER:-}" ] && read -p "DNS provider (e.g., njalla, cloudflare): " DNS_PROVIDER
+[ -z "${DNS_PROVIDER:-}" ] && read -rp "DNS provider (e.g., njalla, cloudflare): " DNS_PROVIDER
 
 DNS_TOKEN_VAR=""
 case "$DNS_PROVIDER" in
@@ -207,22 +207,22 @@ case "$DNS_PROVIDER" in
 esac
 
 DNS_TOKEN="${!DNS_TOKEN_VAR:-}"
-[ -z "$DNS_TOKEN" ] && read -p "DNS API token ($DNS_TOKEN_VAR): " DNS_TOKEN
+[ -z "$DNS_TOKEN" ] && read -rp "DNS API token ($DNS_TOKEN_VAR): " DNS_TOKEN
 
 echo ""
 echo "VPN for qBittorrent (routes torrent traffic through VPN)"
-[ -z "${VPN_PROVIDER:-}" ] && read -p "VPN provider (default: protonvpn): " VPN_PROVIDER
+[ -z "${VPN_PROVIDER:-}" ] && read -rp "VPN provider (default: protonvpn): " VPN_PROVIDER
 VPN_PROVIDER=${VPN_PROVIDER:-protonvpn}
-[ -z "${VPN_TYPE:-}" ] && read -p "VPN type (default: wireguard): " VPN_TYPE
+[ -z "${VPN_TYPE:-}" ] && read -rp "VPN type (default: wireguard): " VPN_TYPE
 VPN_TYPE=${VPN_TYPE:-wireguard}
-[ -z "${VPN_PRIVATE_KEY:-}" ] && read -p "WireGuard private key: " VPN_PRIVATE_KEY
-[ -z "${VPN_SERVER_COUNTRIES:-}" ] && read -p "VPN server country (default: Netherlands): " VPN_SERVER_COUNTRIES
+[ -z "${VPN_PRIVATE_KEY:-}" ] && read -rp "WireGuard private key: " VPN_PRIVATE_KEY
+[ -z "${VPN_SERVER_COUNTRIES:-}" ] && read -rp "VPN server country (default: Netherlands): " VPN_SERVER_COUNTRIES
 VPN_SERVER_COUNTRIES=${VPN_SERVER_COUNTRIES:-Netherlands}
 
 echo ""
 echo "NetBird VPN binding"
 echo "Run 'ip addr show wt0 | grep inet' to find your NetBird IP"
-[ -z "${NETBIRD_IP:-}" ] && read -p "NetBird IP (e.g., 100.64.x.x): " NETBIRD_IP
+[ -z "${NETBIRD_IP:-}" ] && read -rp "NetBird IP (e.g., 100.64.x.x): " NETBIRD_IP
 
 REAL_UID=$(id -u "$REAL_USER")
 REAL_GID=$(id -g "$REAL_USER")

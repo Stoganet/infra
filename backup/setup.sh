@@ -76,7 +76,7 @@ lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT "$DEVICE" 2>/dev/null || lsblk "$DEVI
 echo ""
 echo "This operation cannot be undone."
 echo ""
-read -p "Type the device name again to confirm (e.g., /dev/sdb): " CONFIRM
+read -rp "Type the device name again to confirm (e.g., /dev/sdb): " CONFIRM
 
 if [ "$CONFIRM" != "$DEVICE" ]; then
     echo "Aborted - confirmation did not match"

@@ -1,0 +1,33 @@
+name: Auto-assign
+
+on:
+  pull_request:
+    types: [opened, reopened, edited]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  assign:
+    name: Assign PR author to PR and linked issues
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assign author to the PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          REPO: ${{ github.repository }}
+        run: gh pr edit "$PR_NUMBER" --repo "$REPO" --add-assignee "$AUTHOR"
+
+      - name: Assign author to linked issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BODY: ${{ github.event.pull_request.body }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "$BODY" | grep -oiE '(closes|fixes|resolves) #[0-9]+' | grep -oE '[0-9]+' | while read -r num; do
+            gh issue edit "$num" --repo "$REPO" --add-assignee "$AUTHOR"
+          done

@@ -1,0 +1,238 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Ref (branch / tag / SHA) to deploy. Defaults to main."
+        required: false
+        default: "main"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NB_VERSION: "0.71.4"
+      NB_SHA256: "a7c55f50cafb4034425135253f96a6028edfceb723d09e260bb16eaf4c5a82c3"
+      NB_MGMT_URL: "https://netbird.stoganet.com"
+      HEALTHCHECK_URL_TRAEFIK: "https://traefik.stoganet.com/"
+      HEALTHCHECK_URL_JELLYFIN: "https://jellyfin.stoganet.com/System/Info/Public"
+    steps:
+      - name: Install netbird CLI
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          curl -fsSL -o netbird.tar.gz \
+            "https://github.com/netbirdio/netbird/releases/download/v${NB_VERSION}/netbird_${NB_VERSION}_linux_amd64.tar.gz"
+          echo "${NB_SHA256}  netbird.tar.gz" | sha256sum -c -
+          tar -xzf netbird.tar.gz netbird
+          sudo install -m 0755 netbird /usr/local/bin/netbird
+          netbird version
+
+      - name: Join NetBird overlay
+        env:
+          NB_SETUP_KEY: ${{ secrets.NB_SETUP_KEY }}
+        run: |
+          set -euo pipefail
+          sudo netbird service install || true
+          sudo netbird service start
+          sudo netbird up \
+            --setup-key "$NB_SETUP_KEY" \
+            --management-url "$NB_MGMT_URL" \
+            --hostname "gha-deploy-infra-${{ github.run_id }}"
+          echo "Overlay up: $(ip -4 -o addr show wt0 | awk '/inet / {print $4}')"
+
+      - name: Set up SSH to deploy@home
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOME_OVERLAY_IP: ${{ secrets.HOME_OVERLAY_IP }}
+          HOME_SSH_HOST_KEY: ${{ secrets.HOME_SSH_HOST_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s %s\n' "$HOME_OVERLAY_IP" "$HOME_SSH_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host home
+            HostName ${HOME_OVERLAY_IP}
+            User deploy
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            UserKnownHostsFile ~/.ssh/known_hosts
+            ConnectTimeout 15
+            ConnectionAttempts 5
+            ServerAliveInterval 15
+            ServerAliveCountMax 4
+            TCPKeepAlive yes
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: Wait for SSH over overlay
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 10); do
+            if ssh -o BatchMode=yes -o ConnectTimeout=3 home true; then
+              echo "SSH reachable after ${i} attempt(s)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::SSH to home over overlay not reachable within 20s"
+          exit 1
+
+      - name: Resolve target SHA
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REF: ${{ inputs.ref || github.sha }}
+        run: |
+          set -euo pipefail
+          SHA=$(gh api "repos/${REPO}/commits/${REF}" --jq .sha)
+          echo "Target SHA: $SHA"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Capture previous SHA on home box
+        id: previous
+        env:
+          HOME_OVERLAY_IP: ${{ secrets.HOME_OVERLAY_IP }}
+        run: |
+          set -euo pipefail
+          PREV=$(ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            "deploy@${HOME_OVERLAY_IP}" \
+            'git -C /srv/stoganet rev-parse HEAD')
+          echo "Previous SHA on home box: $PREV"
+          echo "sha=$PREV" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy
+        id: deploy
+        env:
+          HOME_OVERLAY_IP: ${{ secrets.HOME_OVERLAY_IP }}
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            "deploy@${HOME_OVERLAY_IP}" \
+            "/srv/stoganet/bin/deploy.sh '${TARGET_SHA}'"
+
+      - name: Healthcheck
+        id: healthcheck
+        run: |
+          set -euo pipefail
+          probe() {
+            local code
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$1" || echo 000)
+            [ "$code" != "000" ] && [ "$code" -lt 500 ]
+          }
+          DEADLINE=$(( $(date +%s) + 30 ))
+          while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+            TRAEFIK_OK=0
+            JELLY_OK=0
+            probe "$HEALTHCHECK_URL_TRAEFIK"  && TRAEFIK_OK=1 || true
+            probe "$HEALTHCHECK_URL_JELLYFIN" && JELLY_OK=1   || true
+            if [ "$TRAEFIK_OK" = 1 ] && [ "$JELLY_OK" = 1 ]; then
+              echo "Healthcheck passed (traefik=$TRAEFIK_OK jellyfin=$JELLY_OK)"
+              exit 0
+            fi
+            echo "Waiting (traefik=$TRAEFIK_OK jellyfin=$JELLY_OK)..."
+            sleep 5
+          done
+          echo "::error::Healthcheck failed within 30s"
+          exit 1
+
+      - name: Rollback (on deploy or healthcheck failure)
+        id: rollback
+        if: failure() && steps.previous.outputs.sha != ''
+        env:
+          HOME_OVERLAY_IP: ${{ secrets.HOME_OVERLAY_IP }}
+          PREVIOUS_SHA: ${{ steps.previous.outputs.sha }}
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$PREVIOUS_SHA" = "$TARGET_SHA" ]; then
+            echo "Previous SHA equals target SHA; nothing to roll back to."
+            echo "outcome=no-rollback-possible" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "Rolling back to $PREVIOUS_SHA"
+          if ! ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            "deploy@${HOME_OVERLAY_IP}" \
+            "/srv/stoganet/bin/rollback.sh '${PREVIOUS_SHA}'"; then
+            echo "::error::Rollback script failed"
+            echo "outcome=rollback-failed" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          probe() {
+            local code
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$1" || echo 000)
+            [ "$code" != "000" ] && [ "$code" -lt 500 ]
+          }
+          DEADLINE=$(( $(date +%s) + 30 ))
+          while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+            if probe "$HEALTHCHECK_URL_TRAEFIK" && probe "$HEALTHCHECK_URL_JELLYFIN"; then
+              echo "outcome=rolled-back" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Healthcheck failed on rolled-back state"
+          echo "outcome=rollback-failed" >> "$GITHUB_OUTPUT"
+          exit 1
+
+      - name: Diagnostics (on any failure)
+        if: failure()
+        env:
+          HOME_OVERLAY_IP: ${{ secrets.HOME_OVERLAY_IP }}
+        run: |
+          {
+            echo "## Diagnostics"
+            echo
+            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
+              "deploy@${HOME_OVERLAY_IP}" /srv/stoganet/bin/diagnostics.sh 2>&1 \
+              || echo "_diagnostics.sh failed: $?_"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Summarize outcome
+        if: always()
+        env:
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+          PREVIOUS_SHA: ${{ steps.previous.outputs.sha }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          HEALTHCHECK_OUTCOME: ${{ steps.healthcheck.outcome }}
+          ROLLBACK_RESULT: ${{ steps.rollback.outputs.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$DEPLOY_OUTCOME" = "success" ] && [ "$HEALTHCHECK_OUTCOME" = "success" ]; then
+            OUTCOME="deploy-ok"
+            SHA="$TARGET_SHA"
+          elif [ "$ROLLBACK_RESULT" = "rolled-back" ]; then
+            OUTCOME="rolled-back"
+            SHA="$PREVIOUS_SHA"
+          else
+            OUTCOME="MANUAL_INTERVENTION_REQUIRED"
+            SHA="unknown"
+          fi
+          {
+            echo "## Outcome: $OUTCOME"
+            echo
+            echo "- Target SHA: \`$TARGET_SHA\`"
+            echo "- Previous SHA: \`$PREVIOUS_SHA\`"
+            echo "- Running SHA after this run: \`$SHA\`"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$OUTCOME" != "deploy-ok" ]; then
+            exit 1
+          fi
