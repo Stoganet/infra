@@ -28,6 +28,26 @@ jobs:
       HEALTHCHECK_URL_TRAEFIK: "https://traefik.stoganet.com/"
       HEALTHCHECK_URL_JELLYFIN: "https://jellyfin.stoganet.com/System/Info/Public"
     steps:
+      - name: Preflight — verify required secrets are set
+        env:
+          NB_SETUP_KEY: ${{ secrets.NB_SETUP_KEY }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOME_OVERLAY_IP: ${{ secrets.HOME_OVERLAY_IP }}
+          HOME_SSH_HOST_KEY: ${{ secrets.HOME_SSH_HOST_KEY }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "${NB_SETUP_KEY:-}" ]      || missing+=("NB_SETUP_KEY")
+          [ -n "${DEPLOY_SSH_KEY:-}" ]    || missing+=("DEPLOY_SSH_KEY")
+          [ -n "${HOME_OVERLAY_IP:-}" ]   || missing+=("HOME_OVERLAY_IP")
+          [ -n "${HOME_SSH_HOST_KEY:-}" ] || missing+=("HOME_SSH_HOST_KEY")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets: ${missing[*]}"
+            echo "See README 'Host prep for CI deploys' for setup."
+            exit 1
+          fi
+          echo "All required secrets are set."
+
       - name: Install netbird CLI
         run: |
           set -euo pipefail
