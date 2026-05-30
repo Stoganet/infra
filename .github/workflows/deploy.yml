@@ -157,7 +157,7 @@ jobs:
           probe() {
             local code
             code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$1" || echo 000)
-            [ "$code" -ge 200 ] && [ "$code" -lt 400 ]
+            [ "$code" -ge 200 ] && [ "$code" -lt 300 ]
           }
           DEADLINE=$(( $(date +%s) + 30 ))
           while [ "$(date +%s)" -lt "$DEADLINE" ]; do
@@ -202,7 +202,7 @@ jobs:
           probe() {
             local code
             code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$1" || echo 000)
-            [ "$code" -ge 200 ] && [ "$code" -lt 400 ]
+            [ "$code" -ge 200 ] && [ "$code" -lt 300 ]
           }
           DEADLINE=$(( $(date +%s) + 30 ))
           while [ "$(date +%s)" -lt "$DEADLINE" ]; do
