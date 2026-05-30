@@ -329,6 +329,36 @@ services:
       - "traefik.http.routers.seerr.tls.certresolver=letsencrypt"
       - "traefik.http.services.seerr.loadbalancer.server.port=5055"
 
+  api-proxy:
+    image: ghcr.io/stoganet/api-proxy@sha256:1da9adb2cc881c94a82590f4b9bae379b1427a545fac80b1a57af8f407f803ba
+    container_name: api-proxy
+    restart: unless-stopped
+    mem_limit: 256m
+    dns:
+      - 9.9.9.9
+      - 1.1.1.1
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      - JELLYFIN_URL=http://jellyfin:8096
+      - JELLYFIN_API_KEY=${API_PROXY_JF_API_KEY}
+      - JWT_SIGNING_KEY=${API_PROXY_JWT_KEY}
+      - DB_PATH=/data/api-proxy.sqlite
+      - LISTEN_ADDR=:8080
+      - TZ=${TZ}
+    volumes:
+      - api_proxy_data:/data
+    networks:
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api-proxy.rule=Host(`api.${DOMAIN}`)"
+      - "traefik.http.routers.api-proxy.entrypoints=websecure"
+      - "traefik.http.routers.api-proxy.tls.certresolver=letsencrypt"
+      - "traefik.http.services.api-proxy.loadbalancer.server.port=8080"
+
 networks:
   internal:
     driver: bridge
@@ -344,3 +374,4 @@ volumes:
   radarr_config:
   bazarr_config:
   jellyseerr_config:
+  api_proxy_data:
