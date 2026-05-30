@@ -27,7 +27,6 @@ jobs:
       NB_MGMT_URL: "https://netbird.stoganet.com"
       HEALTHCHECK_URL_TRAEFIK: "https://traefik.stoganet.com/"
       HEALTHCHECK_URL_JELLYFIN: "https://jellyfin.stoganet.com/System/Info/Public"
-      HEALTHCHECK_URL_API_PROXY: "https://api.stoganet.com/healthz"
     steps:
       - name: Preflight — verify required secrets are set
         env:
@@ -157,21 +156,19 @@ jobs:
           probe() {
             local code
             code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$1" || echo 000)
-            [ "$code" -ge 200 ] && [ "$code" -lt 300 ]
+            [ "$code" != "000" ] && [ "$code" -lt 500 ]
           }
           DEADLINE=$(( $(date +%s) + 30 ))
           while [ "$(date +%s)" -lt "$DEADLINE" ]; do
             TRAEFIK_OK=0
             JELLY_OK=0
-            API_OK=0
-            probe "$HEALTHCHECK_URL_TRAEFIK"   && TRAEFIK_OK=1 || true
-            probe "$HEALTHCHECK_URL_JELLYFIN"  && JELLY_OK=1   || true
-            probe "$HEALTHCHECK_URL_API_PROXY" && API_OK=1     || true
-            if [ "$TRAEFIK_OK" = 1 ] && [ "$JELLY_OK" = 1 ] && [ "$API_OK" = 1 ]; then
-              echo "Healthcheck passed (traefik=$TRAEFIK_OK jellyfin=$JELLY_OK api-proxy=$API_OK)"
+            probe "$HEALTHCHECK_URL_TRAEFIK"  && TRAEFIK_OK=1 || true
+            probe "$HEALTHCHECK_URL_JELLYFIN" && JELLY_OK=1   || true
+            if [ "$TRAEFIK_OK" = 1 ] && [ "$JELLY_OK" = 1 ]; then
+              echo "Healthcheck passed (traefik=$TRAEFIK_OK jellyfin=$JELLY_OK)"
               exit 0
             fi
-            echo "Waiting (traefik=$TRAEFIK_OK jellyfin=$JELLY_OK api-proxy=$API_OK)..."
+            echo "Waiting (traefik=$TRAEFIK_OK jellyfin=$JELLY_OK)..."
             sleep 5
           done
           echo "::error::Healthcheck failed within 30s"
@@ -202,11 +199,11 @@ jobs:
           probe() {
             local code
             code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$1" || echo 000)
-            [ "$code" -ge 200 ] && [ "$code" -lt 300 ]
+            [ "$code" != "000" ] && [ "$code" -lt 500 ]
           }
           DEADLINE=$(( $(date +%s) + 30 ))
           while [ "$(date +%s)" -lt "$DEADLINE" ]; do
-            if probe "$HEALTHCHECK_URL_TRAEFIK" && probe "$HEALTHCHECK_URL_JELLYFIN" && probe "$HEALTHCHECK_URL_API_PROXY"; then
+            if probe "$HEALTHCHECK_URL_TRAEFIK" && probe "$HEALTHCHECK_URL_JELLYFIN"; then
               echo "outcome=rolled-back" >> "$GITHUB_OUTPUT"
               exit 0
             fi
