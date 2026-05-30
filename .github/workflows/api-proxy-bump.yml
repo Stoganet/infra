@@ -1,0 +1,72 @@
+name: Bump api-proxy digest
+
+on:
+  repository_dispatch:
+    types: [api-proxy-bump]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: api-proxy-bump
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: bump api-proxy digest in compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Preflight — verify required secrets and payload
+        env:
+          BOT_PUSH_TOKEN: ${{ secrets.BOT_PUSH_TOKEN }}
+          PAYLOAD_SHA: ${{ github.event.client_payload.sha }}
+          PAYLOAD_DIGEST: ${{ github.event.client_payload.digest }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "${BOT_PUSH_TOKEN:-}" ]  || missing+=("BOT_PUSH_TOKEN")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets: ${missing[*]}"
+            echo "BOT_PUSH_TOKEN needs to be a PAT with contents:write so the resulting push triggers deploy.yml (GITHUB_TOKEN pushes do not)."
+            exit 1
+          fi
+          if [[ ! "$PAYLOAD_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "::error::client_payload.sha is not a 40-char hex string: '$PAYLOAD_SHA'"
+            exit 1
+          fi
+          if [[ ! "$PAYLOAD_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "::error::client_payload.digest is not a valid sha256 digest: '$PAYLOAD_DIGEST'"
+            exit 1
+          fi
+
+      - name: Checkout infra (with PAT so push triggers deploy.yml)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          token: ${{ secrets.BOT_PUSH_TOKEN }}
+          fetch-depth: 1
+
+      - name: Bump api-proxy digest in compose/docker-compose.yml
+        env:
+          PAYLOAD_SHA: ${{ github.event.client_payload.sha }}
+          PAYLOAD_DIGEST: ${{ github.event.client_payload.digest }}
+        run: |
+          set -euo pipefail
+          if ! grep -qE "ghcr\.io/[^[:space:]]+/api-proxy@sha256:[a-f0-9]+" compose/docker-compose.yml; then
+            echo "::error::No api-proxy image reference found in compose/docker-compose.yml."
+            echo "Add the api-proxy service block first."
+            exit 1
+          fi
+          sed -i -E "s|(ghcr\.io/[^[:space:]]+/api-proxy)@sha256:[a-f0-9]+|\1@${PAYLOAD_DIGEST}|" compose/docker-compose.yml
+
+          if git diff --quiet compose/docker-compose.yml; then
+            echo "Digest already up to date; nothing to commit."
+            exit 0
+          fi
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name  "github-actions[bot]"
+          git add compose/docker-compose.yml
+          git commit -m "chore(deps): bump api-proxy to ${PAYLOAD_SHA}"
+          git push origin main
+          echo "Pushed digest bump for api-proxy ${PAYLOAD_SHA}"
