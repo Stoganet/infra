@@ -58,14 +58,9 @@ if [ -z "$PROWLARR_KEY" ]; then
 fi
 
 echo "Configuring arr stack..."
-printf "  Sonarr key:   %.8s...\n" "$SONARR_KEY"
-printf "  Radarr key:   %.8s...\n" "$RADARR_KEY"
-printf "  Prowlarr key: %.8s...\n" "$PROWLARR_KEY"
-echo ""
 
 # ── Run configuration via Python ───────────────────────────────────────────────
 export SONARR_KEY RADARR_KEY PROWLARR_KEY CONFIG_DIR
-export MAM_ID="${MAM_ID:-}"
 export QBIT_USERNAME="${QBIT_USERNAME:-}"
 export QBIT_PASSWORD="${QBIT_PASSWORD:-}"
 
@@ -218,7 +213,6 @@ print(f"  qBittorrent: {len(prefs)} settings applied")
 print("\n[5/5] Configuring Prowlarr...")
 
 PROWLARR_KEY = os.environ["PROWLARR_KEY"]
-MAM_ID = os.environ.get("MAM_ID", "")
 QBIT_USERNAME = os.environ.get("QBIT_USERNAME", "")
 QBIT_PASSWORD = os.environ.get("QBIT_PASSWORD", "")
 
@@ -266,30 +260,6 @@ else:
             print(f"  Prowlarr: qBittorrent added (id={result['id']})")
         else:
             print("  Prowlarr: ERROR adding qBittorrent")
-
-# MAM indexer
-if not MAM_ID:
-    print("  Prowlarr: MAM_ID not set in .env, skipping MyAnonamouse indexer")
-else:
-    existing_indexers = prowlarr("GET", "/indexer") or []
-    mam_exists = any("anonamouse" in i.get("name", "").lower() for i in existing_indexers)
-    if mam_exists:
-        print("  Prowlarr: MyAnonamouse already configured")
-    else:
-        schemas = prowlarr("GET", "/indexer/schema") or []
-        mam_schema = next((s for s in schemas if s.get("implementation") == "MyAnonamouse"), None)
-        if mam_schema:
-            for f in mam_schema["fields"]:
-                if f["name"] == "mamId":
-                    f["value"] = MAM_ID
-            mam_schema["name"] = "MyAnonamouse"
-            mam_schema["enable"] = True
-            mam_schema["appProfileId"] = 1
-            result = prowlarr("POST", "/indexer", mam_schema)
-            if result and result.get("id"):
-                print(f"  Prowlarr: MyAnonamouse added (id={result['id']})")
-            else:
-                print("  Prowlarr: ERROR adding MyAnonamouse indexer")
 
 print("\nDone.")
 PYEOF
