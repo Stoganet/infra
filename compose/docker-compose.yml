@@ -7,6 +7,7 @@ services:
     restart: unless-stopped
     env_file: .env
     mem_limit: 256m
+    pids_limit: 65536
     dns:
       - 9.9.9.9
       - 1.1.1.1
@@ -25,7 +26,7 @@ services:
     networks:
       - internal
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "--no-check-certificate", "https://localhost:443/ping"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/ping"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -71,7 +72,6 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    # Intel Quick Sync: comment out devices + group_add if no iGPU
     devices:
       - /dev/dri:/dev/dri
     group_add:

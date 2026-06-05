@@ -2,8 +2,7 @@ api:
   dashboard: true
   insecure: false
 
-ping:
-  entryPoint: websecure
+ping: {}
 
 entryPoints:
   web:
@@ -31,10 +30,10 @@ providers:
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: your@email.com
+      email: stoga@stoganet.com
       storage: /certs/acme.json
       dnsChallenge:
-        provider: cloudflare
+        provider: njalla
         delayBeforeCheck: 60s
         resolvers:
           - "1.1.1.1:53"

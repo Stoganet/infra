@@ -7,4 +7,5 @@
 .vscode
 backup.env
 services.env
-compose/traefik/traefik.yml
+docs/superpowers
+docs/internal
