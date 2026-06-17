@@ -330,7 +330,7 @@ services:
       - "traefik.http.services.seerr.loadbalancer.server.port=5055"
 
   api-proxy:
-    image: ghcr.io/stoganet/api-proxy@sha256:2c6551040bf919afd440bcecb1263eab0c2a0fa2bd5efccac9ec565f6a12d4db
+    image: ghcr.io/stoganet/api-proxy@sha256:7d004a3b353e64ed47ec61b3fcd704916ad98c80cd9011e1bacec9c4603f3982
     container_name: api-proxy
     restart: unless-stopped
     mem_limit: 256m
