@@ -345,6 +345,7 @@ services:
       - JELLYFIN_URL=http://jellyfin:8096
       - JELLYFIN_API_KEY=${API_PROXY_JF_API_KEY}
       - JWT_SIGNING_KEY=${API_PROXY_JWT_KEY}
+      - PROXY_BASE_URL=${PROXY_BASE_URL}
       - DB_PATH=/data/api-proxy.sqlite
       - LISTEN_ADDR=:8080
       - TZ=${TZ}
