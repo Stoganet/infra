@@ -108,6 +108,19 @@ fi
 usermod -aG docker "$REAL_USER"
 
 echo ""
+echo "Configuring Docker to wait for /mnt/wd before starting..."
+MOUNT_UNIT=$(systemctl list-units --type=mount 2>/dev/null | awk '/wd/ {print $1}' | head -1)
+MOUNT_UNIT=${MOUNT_UNIT:-mnt-wd.mount}
+mkdir -p /etc/systemd/system/docker.service.d
+cat > /etc/systemd/system/docker.service.d/wait-for-wd.conf << EOF
+[Unit]
+After=${MOUNT_UNIT}
+Requires=${MOUNT_UNIT}
+EOF
+systemctl daemon-reload
+echo "Drop-in written: After=${MOUNT_UNIT}"
+
+echo ""
 echo "[7/8] Installing NetBird..."
 if ! command -v netbird &> /dev/null; then
     curl -fsSL https://pkgs.netbird.io/install.sh | sh
@@ -256,7 +269,7 @@ if [ ! -f "$SCRIPT_DIR/traefik/traefik.yml" ]; then
     echo "Generating Traefik configuration..."
     cat > "$SCRIPT_DIR/traefik/traefik.yml" << EOF
 api:
-  dashboard: true
+  dashboard: false
 
 ping: {}
 
