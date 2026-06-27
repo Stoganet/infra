@@ -24,11 +24,9 @@ jobs:
     env:
       NB_VERSION: "0.71.4"
       NB_SHA256: "a7c55f50cafb4034425135253f96a6028edfceb723d09e260bb16eaf4c5a82c3"
-      NB_MGMT_URL: "https://netbird.stoganet.com"
-      HEALTHCHECK_URL_TRAEFIK: "https://traefik.stoganet.com/"
       HEALTHCHECK_URL_JELLYFIN: "https://jellyfin.stoganet.com/System/Info/Public"
     steps:
-      - name: Preflight — verify required secrets are set
+      - name: Preflight
         env:
           NB_SETUP_KEY: ${{ secrets.NB_SETUP_KEY }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -43,10 +41,8 @@ jobs:
           [ -n "${HOME_SSH_HOST_KEY:-}" ] || missing+=("HOME_SSH_HOST_KEY")
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::Missing required secrets: ${missing[*]}"
-            echo "See README 'Host prep for CI deploys' for setup."
             exit 1
           fi
-          echo "All required secrets are set."
 
       - name: Install netbird CLI
         run: |
@@ -62,6 +58,7 @@ jobs:
       - name: Join NetBird overlay
         env:
           NB_SETUP_KEY: ${{ secrets.NB_SETUP_KEY }}
+          NB_MGMT_URL: ${{ secrets.NB_MGMT_URL }}
         run: |
           set -euo pipefail
           sudo netbird service install || true
@@ -70,9 +67,8 @@ jobs:
             --setup-key "$NB_SETUP_KEY" \
             --management-url "$NB_MGMT_URL" \
             --hostname "gha-deploy-infra-${{ github.run_id }}"
-          echo "Overlay up: $(ip -4 -o addr show wt0 | awk '/inet / {print $4}')"
 
-      - name: Set up SSH to deploy@home
+      - name: Set up SSH
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           HOME_OVERLAY_IP: ${{ secrets.HOME_OVERLAY_IP }}
@@ -101,12 +97,11 @@ jobs:
           EOF
           chmod 600 ~/.ssh/config
 
-      - name: Wait for SSH over overlay
+      - name: Wait for SSH
         run: |
           set -euo pipefail
           for i in $(seq 1 10); do
             if ssh -o BatchMode=yes -o ConnectTimeout=3 home true; then
-              echo "SSH reachable after ${i} attempt(s)"
               exit 0
             fi
             sleep 2
@@ -123,10 +118,9 @@ jobs:
         run: |
           set -euo pipefail
           SHA=$(gh api "repos/${REPO}/commits/${REF}" --jq .sha)
-          echo "Target SHA: $SHA"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Capture previous SHA on home box
+      - name: Capture previous SHA
         id: previous
         env:
           HOME_OVERLAY_IP: ${{ secrets.HOME_OVERLAY_IP }}
@@ -135,7 +129,6 @@ jobs:
           PREV=$(ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
             "deploy@${HOME_OVERLAY_IP}" \
             'git -C /srv/stoganet rev-parse HEAD')
-          echo "Previous SHA on home box: $PREV"
           echo "sha=$PREV" >> "$GITHUB_OUTPUT"
 
       - name: Deploy
@@ -151,6 +144,8 @@ jobs:
 
       - name: Healthcheck
         id: healthcheck
+        env:
+          HEALTHCHECK_URL_TRAEFIK: ${{ secrets.HEALTHCHECK_URL_TRAEFIK }}
         run: |
           set -euo pipefail
           probe() {
@@ -165,7 +160,6 @@ jobs:
             probe "$HEALTHCHECK_URL_TRAEFIK"  && TRAEFIK_OK=1 || true
             probe "$HEALTHCHECK_URL_JELLYFIN" && JELLY_OK=1   || true
             if [ "$TRAEFIK_OK" = 1 ] && [ "$JELLY_OK" = 1 ]; then
-              echo "Healthcheck passed (traefik=$TRAEFIK_OK jellyfin=$JELLY_OK)"
               exit 0
             fi
             echo "Waiting (traefik=$TRAEFIK_OK jellyfin=$JELLY_OK)..."
@@ -174,21 +168,20 @@ jobs:
           echo "::error::Healthcheck failed within 30s"
           exit 1
 
-      - name: Rollback (on deploy or healthcheck failure)
+      - name: Rollback
         id: rollback
         if: failure() && steps.previous.outputs.sha != ''
         env:
           HOME_OVERLAY_IP: ${{ secrets.HOME_OVERLAY_IP }}
           PREVIOUS_SHA: ${{ steps.previous.outputs.sha }}
           TARGET_SHA: ${{ steps.target.outputs.sha }}
+          HEALTHCHECK_URL_TRAEFIK: ${{ secrets.HEALTHCHECK_URL_TRAEFIK }}
         run: |
           set -euo pipefail
           if [ "$PREVIOUS_SHA" = "$TARGET_SHA" ]; then
-            echo "Previous SHA equals target SHA; nothing to roll back to."
             echo "outcome=no-rollback-possible" >> "$GITHUB_OUTPUT"
             exit 1
           fi
-          echo "Rolling back to $PREVIOUS_SHA"
           if ! ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
             "deploy@${HOME_OVERLAY_IP}" \
             "/srv/stoganet/bin/rollback.sh '${PREVIOUS_SHA}'"; then
@@ -213,7 +206,7 @@ jobs:
           echo "outcome=rollback-failed" >> "$GITHUB_OUTPUT"
           exit 1
 
-      - name: Diagnostics (on any failure)
+      - name: Diagnostics
         if: failure()
         env:
           HOME_OVERLAY_IP: ${{ secrets.HOME_OVERLAY_IP }}

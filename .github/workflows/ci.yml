@@ -13,13 +13,13 @@ jobs:
     name: compose validate
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 1
 
       - name: Prepare stub env
-        run: cp compose/services.env.example compose/.env
+        run: cp compose/.env.example compose/.env
 
       - name: Validate compose stack
         run: docker compose -f compose/docker-compose.yml config -q
@@ -28,7 +28,7 @@ jobs:
     name: shellcheck
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 1
@@ -40,7 +40,7 @@ jobs:
     name: gitleaks
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
@@ -58,7 +58,7 @@ jobs:
     name: arrconfig validate
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 1
