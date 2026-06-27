@@ -322,7 +322,7 @@ services:
       - "traefik.http.services.seerr.loadbalancer.server.port=5055"
 
   mcp-server:
-    image: ghcr.io/stoganet/mcp:latest
+    image: ghcr.io/stoganet/mcp@sha256:6dfcf08ad14e04ba8ae824d97b4e920c31381386b808b14262cb0fac03ce2682
     container_name: mcp-server
     restart: unless-stopped
     mem_limit: 128m
