@@ -1,0 +1,27 @@
+{
+  env: {
+    ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}",
+  },
+
+  auth: {
+    profiles: {
+      "anthropic:default": { provider: "anthropic", mode: "api_key" },
+    },
+  },
+
+  channels: {
+    telegram: {
+      enabled: true,
+      botToken: "${TELEGRAM_BOT_TOKEN}",
+      allowFrom: ["${TELEGRAM_ALLOWED_USER_ID}"],
+    },
+  },
+
+  agents: {
+    defaults: {
+      model: {
+        primary: "anthropic/claude-sonnet-4-6",
+      },
+    },
+  },
+}

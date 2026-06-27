@@ -321,6 +321,45 @@ services:
       - "traefik.http.routers.seerr.tls.certresolver=letsencrypt"
       - "traefik.http.services.seerr.loadbalancer.server.port=5055"
 
+  mcp-server:
+    image: ghcr.io/stoganet/mcp:latest
+    container_name: mcp-server
+    restart: unless-stopped
+    mem_limit: 128m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      - SONARR_API_KEY=${SONARR_API_KEY}
+      - RADARR_API_KEY=${RADARR_API_KEY}
+      - PROWLARR_API_KEY=${PROWLARR_API_KEY}
+      - BAZARR_API_KEY=${BAZARR_API_KEY}
+      - QBIT_USERNAME=${QBIT_USERNAME}
+      - QBIT_PASSWORD=${QBIT_PASSWORD}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/wd:/mnt/wd:ro
+    networks:
+      - internal
+
+  openclaw:
+    image: ghcr.io/openclaw/openclaw:2026.6.1@sha256:b12f76a7947e4cdd328bf3ea1045d41a5494b33852c911e9bc4fdd03dde469d5
+    container_name: openclaw
+    restart: unless-stopped
+    mem_limit: 512m
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_ALLOWED_USER_ID=${TELEGRAM_ALLOWED_USER_ID}
+    volumes:
+      - openclaw_config:/home/node/.openclaw
+      - ./openclaw/openclaw.json5:/home/node/.openclaw/openclaw.json5:ro
+    networks:
+      - internal
+
   api-proxy:
     image: ghcr.io/stoganet/api-proxy@sha256:bd9d63c4e64bd424be080be3938af5b2171c31ebaa9883bda8a7e0f9608330b6
     container_name: api-proxy
@@ -357,6 +396,7 @@ networks:
     driver: bridge
 
 volumes:
+  openclaw_config:
   portainer_data:
   traefik_certs:
   jellyfin_config:

@@ -21,7 +21,7 @@ infra/
 ```
 git clone https://github.com/Stoganet/infra.git /srv/stoganet
 cd /srv/stoganet/compose
-cp services.env.example .env
+cp .env.example .env
 $EDITOR .env             # fill in domain, VPN keys, API keys, etc.
 sudo ./setup.sh          # one-time host bootstrap (Docker, NetBird, UFW, ZRAM)
 docker compose up -d
