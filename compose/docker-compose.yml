@@ -330,6 +330,8 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    group_add:
+      - "${DOCKER_GID}"
     environment:
       - SONARR_API_KEY=${SONARR_API_KEY}
       - RADARR_API_KEY=${RADARR_API_KEY}
@@ -358,6 +360,8 @@ services:
     volumes:
       - openclaw_config:/home/node/.openclaw
       - ./openclaw/openclaw.json5:/home/node/.openclaw/openclaw.json5:ro
+      - ./openclaw/SOUL.md:/home/node/.openclaw/workspace/SOUL.md:ro
+      - ./openclaw/BOOTSTRAP.md:/home/node/.openclaw/workspace/BOOTSTRAP.md:ro
     networks:
       - internal
 
