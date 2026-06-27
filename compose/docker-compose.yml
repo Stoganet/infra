@@ -361,7 +361,7 @@ services:
       - internal
 
   api-proxy:
-    image: ghcr.io/stoganet/api-proxy@sha256:bd9d63c4e64bd424be080be3938af5b2171c31ebaa9883bda8a7e0f9608330b6
+    image: ghcr.io/stoganet/api-proxy@sha256:3cfb26586f86607859163d4046fe383c153605c40eac42f5cc66c0fa8747aed3
     container_name: api-proxy
     restart: unless-stopped
     mem_limit: 256m
