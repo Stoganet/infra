@@ -360,8 +360,8 @@ services:
     volumes:
       - openclaw_config:/home/node/.openclaw
       - ./openclaw/openclaw.json5:/home/node/.openclaw/openclaw.json5:ro
-      - ./openclaw/SOUL.md:/home/node/.openclaw/workspace/SOUL.md:ro
-      - ./openclaw/BOOTSTRAP.md:/home/node/.openclaw/workspace/BOOTSTRAP.md:ro
+      - ./openclaw/AGENTS.md:/home/node/.openclaw/workspace/AGENTS.md:ro
+      - ./openclaw/skills:/home/node/.openclaw/custom-skills:ro
     networks:
       - internal
 

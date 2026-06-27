@@ -33,9 +33,17 @@
 
   agents: {
     defaults: {
+      skipBootstrap: true,
+      skills: ["ops"],
       model: {
         primary: "anthropic/claude-sonnet-4-6",
       },
+    },
+  },
+
+  skills: {
+    load: {
+      extraDirs: ["/home/node/.openclaw/custom-skills"],
     },
   },
 }
