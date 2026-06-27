@@ -365,6 +365,29 @@ services:
     networks:
       - internal
 
+  uptime-kuma:
+    image: louislam/uptime-kuma:2-slim@sha256:f8178b7e1a0ea20b0bdf837ffc71a5a9c31060dbda7f467a26d959ef1d4c1dfd
+    container_name: uptime-kuma
+    restart: unless-stopped
+    mem_limit: 256m
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - DATABASE_TYPE=sqlite
+    group_add:
+      - "${DOCKER_GID}"
+    volumes:
+      - uptime_kuma_data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.uptime-kuma.rule=Host(`status.${DOMAIN}`)"
+      - "traefik.http.routers.uptime-kuma.entrypoints=websecure"
+      - "traefik.http.routers.uptime-kuma.tls.certresolver=letsencrypt"
+      - "traefik.http.services.uptime-kuma.loadbalancer.server.port=3001"
+
   api-proxy:
     image: ghcr.io/stoganet/api-proxy@sha256:b4e78ea0a02ea767cf7824e7216859e774beecafe17fbe601adeea50f9dd9cc1
     container_name: api-proxy
@@ -412,4 +435,5 @@ volumes:
   radarr_config:
   bazarr_config:
   jellyseerr_config:
+  uptime_kuma_data:
   api_proxy_data:
