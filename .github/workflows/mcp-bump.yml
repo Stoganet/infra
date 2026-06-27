@@ -19,19 +19,19 @@ jobs:
     steps:
       - name: Preflight
         env:
-          BOT_PUSH_TOKEN: ${{ secrets.BOT_PUSH_TOKEN }}
+          INFRA_DISPATCH_TOKEN: ${{ secrets.INFRA_DISPATCH_TOKEN }}
           PAYLOAD_SHA: ${{ github.event.client_payload.sha }}
           PAYLOAD_DIGEST: ${{ github.event.client_payload.digest }}
         run: |
           set -euo pipefail
-          [ -n "${BOT_PUSH_TOKEN:-}" ] || { echo "::error::BOT_PUSH_TOKEN not set"; exit 1; }
+          [ -n "${INFRA_DISPATCH_TOKEN:-}" ] || { echo "::error::INFRA_DISPATCH_TOKEN not set"; exit 1; }
           [[ "$PAYLOAD_SHA" =~ ^[a-f0-9]{40}$ ]] || { echo "::error::invalid sha: '$PAYLOAD_SHA'"; exit 1; }
           [[ "$PAYLOAD_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::invalid digest: '$PAYLOAD_DIGEST'"; exit 1; }
 
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          token: ${{ secrets.BOT_PUSH_TOKEN }}
+          token: ${{ secrets.INFRA_DISPATCH_TOKEN }}
           ref: main
           fetch-depth: 1
 
