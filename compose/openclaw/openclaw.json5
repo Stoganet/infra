@@ -1,4 +1,9 @@
 {
+  gateway: {
+    mode: "local",
+    bind: "loopback"
+  },
+
   env: {
     ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}",
   },

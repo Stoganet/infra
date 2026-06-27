@@ -354,6 +354,7 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_ALLOWED_USER_ID=${TELEGRAM_ALLOWED_USER_ID}
+      - OPENCLAW_CONFIG_PATH=/home/node/.openclaw/openclaw.json5
     volumes:
       - openclaw_config:/home/node/.openclaw
       - ./openclaw/openclaw.json5:/home/node/.openclaw/openclaw.json5:ro
