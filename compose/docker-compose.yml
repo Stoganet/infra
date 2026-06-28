@@ -56,7 +56,7 @@ services:
     container_name: jellyfin
     user: ${PUID}:${PGID}
     restart: unless-stopped
-    mem_limit: 1.5g
+    mem_limit: 2g
     dns:
       - 9.9.9.9
       - 1.1.1.1
@@ -133,7 +133,7 @@ services:
     image: lscr.io/linuxserver/qbittorrent:latest@sha256:eeea9f8a8cdde23555186843d26e8ded1222421f31f98a5cc1b50c2882ebcf4e
     container_name: qbittorrent
     restart: unless-stopped
-    mem_limit: 512m
+    mem_limit: 768m
     security_opt:
       - no-new-privileges:true
     network_mode: service:gluetun
@@ -267,7 +267,7 @@ services:
     image: lscr.io/linuxserver/bazarr:latest@sha256:95f27692c3de6dbe130cd035d342d8138ec74ade7b62cfc52e11ae222c52c855
     container_name: bazarr
     restart: unless-stopped
-    mem_limit: 384m
+    mem_limit: 768m
     dns:
       - 9.9.9.9
       - 1.1.1.1
