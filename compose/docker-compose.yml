@@ -425,7 +425,7 @@ services:
       - "traefik.http.services.uptime-kuma.loadbalancer.server.port=3001"
 
   api-proxy:
-    image: ghcr.io/stoganet/api-proxy@sha256:3f77788ae080e23a1539d38316c77bdc39b09bb5bc2c29bb6aa0b6821af66f3c
+    image: ghcr.io/stoganet/api-proxy@sha256:e8b9620f43827d0362effece18cee97bb90d1816b2491f286009892670289bf1
     container_name: api-proxy
     restart: unless-stopped
     mem_limit: 256m
