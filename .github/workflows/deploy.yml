@@ -1,8 +1,6 @@
 name: Deploy
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       ref:
@@ -114,7 +112,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          REF: ${{ inputs.ref || github.sha }}
+          REF: ${{ inputs.ref }}
         run: |
           set -euo pipefail
           SHA=$(gh api "repos/${REPO}/commits/${REF}" --jq .sha)

@@ -11,4 +11,5 @@ cd /srv/stoganet
 git checkout --quiet "$PREVIOUS_SHA"
 
 cd /srv/stoganet/compose
-docker compose up -d
+docker compose up -d --no-deps --force-recreate gluetun
+docker compose up -d --remove-orphans

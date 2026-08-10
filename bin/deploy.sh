@@ -13,6 +13,7 @@ git checkout --quiet "$TARGET_SHA"
 
 cd /srv/stoganet/compose
 docker compose pull
-docker compose up -d
+docker compose up -d --no-deps --force-recreate gluetun
+docker compose up -d --remove-orphans
 
 ./configure-arr.sh

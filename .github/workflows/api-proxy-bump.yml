@@ -6,10 +6,14 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: api-proxy-bump
   cancel-in-progress: false
+
+env:
+  BRANCH: chore/api-proxy-bump
 
 jobs:
   bump:
@@ -33,20 +37,41 @@ jobs:
         with:
           token: ${{ secrets.INFRA_DISPATCH_TOKEN }}
           ref: main
-          fetch-depth: 1
+          fetch-depth: 0
 
-      - name: Bump digest
+      - name: Bump digest on bump branch
+        id: bump
         env:
           PAYLOAD_SHA: ${{ github.event.client_payload.sha }}
           PAYLOAD_DIGEST: ${{ github.event.client_payload.digest }}
         run: |
           set -euo pipefail
+          git checkout -B "$BRANCH" origin/main
+
           grep -qE "ghcr\.io/[^[:space:]]+/api-proxy@sha256:[a-f0-9]+" compose/docker-compose.yml \
             || { echo "::error::api-proxy image not found in compose/docker-compose.yml"; exit 1; }
           sed -i -E "s|(ghcr\.io/[^[:space:]]+/api-proxy)@sha256:[a-f0-9]+|\1@${PAYLOAD_DIGEST}|" compose/docker-compose.yml
-          git diff --quiet compose/docker-compose.yml && exit 0
+          git diff --quiet compose/docker-compose.yml && { echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; }
+
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name  "github-actions[bot]"
           git add compose/docker-compose.yml
           git commit -m "chore(deps): bump api-proxy to ${PAYLOAD_SHA}"
-          git push origin main
+          git push --force-with-lease origin "$BRANCH"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update PR
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.INFRA_DISPATCH_TOKEN }}
+          PAYLOAD_SHA: ${{ github.event.client_payload.sha }}
+        run: |
+          set -euo pipefail
+          TITLE="chore(deps): bump api-proxy to ${PAYLOAD_SHA}"
+          if gh pr view "$BRANCH" --json state -q .state 2>/dev/null | grep -q OPEN; then
+            gh pr edit "$BRANCH" --title "$TITLE"
+          else
+            gh pr create --title "$TITLE" \
+              --body "Automated api-proxy digest bump. Merge to main to make this eligible for the next manual Deploy run." \
+              --base main --head "$BRANCH"
+          fi
