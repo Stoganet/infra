@@ -9,7 +9,7 @@ Infrastructure-as-config for the Stoganet home server. **No application code, no
 Two top-level deliverables:
 
 - `compose/` — Docker Compose stack (Traefik, Jellyfin, *arr stack, Gluetun+qBittorrent, Jellyseerr, Portainer) plus `setup.sh` (host bootstrap) and `configure-arr.sh` (idempotent post-deploy config of Sonarr/Radarr/qBittorrent via their REST APIs using JSON in `compose/arrconfig/`).
-- `backup/` — LUKS-encrypted USB backup driven by a systemd timer. `setup.sh` is one-time drive init (LUKS2 + ext4 + keyfile); `backup.sh` runs daily, opens LUKS, rclones Docker volumes (read from `/var/lib/docker/volumes/${COMPOSE_PROJECT}_*_config/_data`), and sends ntfy alerts.
+- `backup/` — LUKS-encrypted USB backup driven by a systemd timer. `setup.sh` is one-time drive init (LUKS2 + ext4 + keyfile); `backup.sh` runs daily, opens LUKS, and rclones Docker volumes (read from `/var/lib/docker/volumes/${COMPOSE_PROJECT}_*_config/_data`).
 - `bin/` — host-side deploy/rollback/diagnostics scripts invoked by `.github/workflows/deploy.yml` over SSH. `deploy.sh` is idempotent (checkout SHA + `compose pull` + `up -d` + `./configure-arr.sh`); `rollback.sh` skips pull and configure-arr; `diagnostics.sh` is read-only.
 
 ## Architecture invariants

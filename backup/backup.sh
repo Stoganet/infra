@@ -7,23 +7,6 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') $1"
 }
 
-send_alert() {
-    local priority="$1"
-    local message="$2"
-
-    if [ -n "${NTFY_URL:-}" ] && [ -n "${NTFY_TOPIC:-}" ]; then
-        local auth_args=()
-        if [ -n "${NTFY_TOKEN:-}" ]; then
-            auth_args=(-H "Authorization: Bearer $NTFY_TOKEN")
-        fi
-        curl -s \
-            -H "Priority: $priority" \
-            "${auth_args[@]}" \
-            -d "$message" \
-            "${NTFY_URL}/${NTFY_TOPIC}" > /dev/null 2>&1 || true
-    fi
-}
-
 check_disk_space() {
     local mount="$1"
     local min_gb="${2:-10}"
@@ -40,7 +23,6 @@ check_disk_space() {
 
     if [ "$available_gb" -lt "$min_gb" ]; then
         log "Warning: Only ${available_gb}GB available on backup drive (minimum: ${min_gb}GB)"
-        send_alert "high" "Backup warning: only ${available_gb}GB free on backup drive"
         return 1
     fi
 
@@ -73,7 +55,6 @@ source "$CONFIG_FILE"
 : "${BACKUP_DRIVE_UUID:?BACKUP_DRIVE_UUID not set in $CONFIG_FILE}"
 : "${BACKUP_MOUNT:=/mnt/samsung}"
 : "${BACKUP_KEYFILE:=/etc/backup/backup.key}"
-: "${ALERT_ON_MISSING:=false}"
 : "${MIN_DISK_SPACE_GB:=10}"
 : "${VERIFY_BACKUP:=true}"
 : "${DOCKER_VOLUME_PATH:=/var/lib/docker/volumes}"
@@ -94,15 +75,11 @@ done
 
 if [ ! -e "$DRIVE_PATH" ]; then
     log "Drive not connected (UUID: $BACKUP_DRIVE_UUID)"
-    if [ "$ALERT_ON_MISSING" = "true" ]; then
-        send_alert "low" "Backup skipped: drive not connected"
-    fi
     exit 0
 fi
 
 if [ ! -f "$BACKUP_KEYFILE" ]; then
     log "Error: Keyfile not found: $BACKUP_KEYFILE"
-    send_alert "urgent" "Backup FAILED: keyfile not found"
     exit 1
 fi
 
@@ -115,7 +92,6 @@ if [ -e /dev/mapper/backup-vault ]; then
 else
     if ! cryptsetup open "$DRIVE_PATH" backup-vault --key-file "$BACKUP_KEYFILE"; then
         log "Error: Failed to unlock drive"
-        send_alert "urgent" "Backup FAILED: could not unlock drive"
         exit 1
     fi
 fi
@@ -127,7 +103,6 @@ if mountpoint -q "$BACKUP_MOUNT" 2>/dev/null; then
 else
     if ! mount /dev/mapper/backup-vault "$BACKUP_MOUNT"; then
         log "Error: Failed to mount drive"
-        send_alert "urgent" "Backup FAILED: could not mount drive"
         exit 1
     fi
 fi
@@ -237,9 +212,7 @@ SECONDS=$((DURATION % 60))
 
 if [ "$FAILED" -eq 1 ]; then
     log "Backup completed with errors in ${MINUTES}m ${SECONDS}s"
-    send_alert "high" "Backup completed with errors: ${TOTAL_FILES} files in ${MINUTES}m"
     exit 1
 else
     log "Backup completed: ${TOTAL_FILES} files, ${VERIFIED} verified in ${MINUTES}m ${SECONDS}s"
-    send_alert "default" "Backup OK: ${TOTAL_FILES} files in ${MINUTES}m"
 fi
