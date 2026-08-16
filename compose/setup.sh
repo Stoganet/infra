@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 if [ "$EUID" -ne 0 ]; then
     echo "Please run with sudo: sudo ./setup.sh"
     exit 1
@@ -108,17 +110,27 @@ fi
 usermod -aG docker "$REAL_USER"
 
 echo ""
-echo "Configuring Docker to wait for /mnt/wd before starting..."
+echo "Configuring Docker to wait for /mnt/wd and NetBird before starting..."
 MOUNT_UNIT=$(systemctl list-units --type=mount 2>/dev/null | awk '/wd/ {print $1}' | head -1)
 MOUNT_UNIT=${MOUNT_UNIT:-mnt-wd.mount}
 mkdir -p /etc/systemd/system/docker.service.d
 cat > /etc/systemd/system/docker.service.d/wait-for-wd.conf << EOF
 [Unit]
-After=${MOUNT_UNIT}
+After=${MOUNT_UNIT} netbird.service
 Requires=${MOUNT_UNIT}
+
+[Service]
+ExecStartPre=/bin/bash -c 'for i in \$(seq 1 60); do ip addr show wt0 2>/dev/null | grep -q "inet " && exit 0; sleep 1; done; echo "wt0 has no IPv4 after 60s, proceeding anyway"; exit 0'
 EOF
 systemctl daemon-reload
-echo "Drop-in written: After=${MOUNT_UNIT}"
+echo "Drop-in written: After=${MOUNT_UNIT} netbird.service, waits up to 60s for wt0 IP"
+
+echo ""
+echo "Installing stack-healthcheck.service..."
+cp "$SCRIPT_DIR/../bin/stack-healthcheck.service" /etc/systemd/system/stack-healthcheck.service
+systemctl daemon-reload
+systemctl enable stack-healthcheck.service
+echo "stack-healthcheck.service installed and enabled"
 
 echo ""
 echo "[7/8] Installing NetBird..."
@@ -176,7 +188,6 @@ fi
 
 echo ""
 echo "Setting up Traefik directories..."
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 mkdir -p "$SCRIPT_DIR/traefik/dynamic"
 chown -R "$REAL_USER:$REAL_USER" "$SCRIPT_DIR/traefik"

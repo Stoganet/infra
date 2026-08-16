@@ -1,0 +1,12 @@
+[Unit]
+Description=Stoganet stack post-boot healthcheck (NetBird race, Traefik port-publish, stale mount workarounds)
+After=docker.service netbird.service mnt-wd.mount
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+ExecStart=/srv/stoganet/bin/stack-healthcheck.sh
+
+[Install]
+WantedBy=multi-user.target
