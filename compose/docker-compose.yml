@@ -194,7 +194,7 @@ services:
       - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
 
   flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr:v3.3.21@sha256:f104ee51e5124d83cf3be9b37480649355d223f7d8f9e453d0d5ef06c6e3b31b
+    image: ghcr.io/flaresolverr/flaresolverr:v3.5.0@sha256:139dfee1c6f89249c8d665d1333a42e8ec74ec0a86bc6bb1c8461e10d3a66a47
     container_name: flaresolverr
     restart: unless-stopped
     mem_limit: 512m
