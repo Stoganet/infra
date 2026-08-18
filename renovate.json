@@ -6,9 +6,8 @@
     "helpers:pinGitHubActionDigests"
   ],
   "timezone": "Europe/Helsinki",
-  "schedule": ["* 3-4 * * 6"],
   "platformAutomerge": false,
-  "dependencyDashboard": true,
+  "dependencyDashboard": false,
   "packageRules": [
     {
       "matchManagers": ["docker-compose"],
