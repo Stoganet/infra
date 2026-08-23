@@ -21,7 +21,6 @@ jobs:
     timeout-minutes: 10
     env:
       NB_VERSION: "0.71.4"
-      NB_SHA256: "a7c55f50cafb4034425135253f96a6028edfceb723d09e260bb16eaf4c5a82c3"
       HEALTHCHECK_URL_JELLYFIN: "https://jellyfin.stoganet.com/System/Info/Public"
     steps:
       - name: Preflight
@@ -46,9 +45,11 @@ jobs:
         run: |
           set -euo pipefail
           cd "$RUNNER_TEMP"
-          curl -fsSL -o netbird.tar.gz \
-            "https://github.com/netbirdio/netbird/releases/download/v${NB_VERSION}/netbird_${NB_VERSION}_linux_amd64.tar.gz"
-          echo "${NB_SHA256}  netbird.tar.gz" | sha256sum -c -
+          asset="netbird_${NB_VERSION}_linux_amd64.tar.gz"
+          release_url="https://github.com/netbirdio/netbird/releases/download/v${NB_VERSION}"
+          curl -fsSL -o netbird.tar.gz "${release_url}/${asset}"
+          curl -fsSL -o checksums.txt "${release_url}/netbird_${NB_VERSION}_checksums.txt"
+          grep -E "  ${asset}\$" checksums.txt | sha256sum -c -
           tar -xzf netbird.tar.gz netbird
           sudo install -m 0755 netbird /usr/local/bin/netbird
           netbird version

@@ -11,29 +11,31 @@
   "prHourlyLimit": 0,
   "packageRules": [
     {
-      "matchManagers": ["github-actions"],
-      "groupName": "github-actions",
-      "automerge": true,
-      "matchUpdateTypes": ["digest", "patch", "minor"]
+      "matchManagers": ["github-actions", "docker-compose"],
+      "matchUpdateTypes": ["digest", "patch", "minor"],
+      "automerge": true
     },
     {
-      "matchManagers": ["docker-compose"],
-      "excludePackageNames": ["qmcgaw/gluetun"],
-      "groupName": "docker-compose digest/patch",
-      "automerge": true,
-      "matchUpdateTypes": ["digest", "patch"]
-    },
-    {
-      "matchManagers": ["docker-compose"],
-      "matchPackageNames": ["qmcgaw/gluetun"],
+      "matchManagers": ["github-actions", "docker-compose"],
+      "matchUpdateTypes": ["major"],
       "automerge": false,
       "labels": ["review-needed"]
     },
     {
-      "matchManagers": ["docker-compose"],
-      "matchUpdateTypes": ["major", "minor"],
+      "matchManagers": ["custom.regex"],
+      "matchDepNames": ["netbirdio/netbird"],
       "automerge": false,
       "labels": ["review-needed"]
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["^\\.github/workflows/deploy\\.yml$"],
+      "matchStrings": ["NB_VERSION:\\s*\"(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "netbirdio/netbird",
+      "extractVersionTemplate": "^v(?<version>.*)$"
     }
   ]
 }
