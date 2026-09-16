@@ -22,7 +22,6 @@ echo "  - ZRAM (4GB compressed swap)"
 echo "  - NetBird VPN client"
 echo "  - Docker"
 echo "  - UFW firewall"
-echo "  - Traefik directories"
 echo "  - Media library structure (/mnt/wd)"
 echo ""
 read -rp "Continue with installation? (y/n) " -r
@@ -178,8 +177,6 @@ if ! ufw status | grep -qw "active"; then
     ufw allow from "$LAN_SUBNET" to any port 22 proto tcp comment 'SSH from LAN'
 
     ufw allow in on wt0 comment 'NetBird mesh traffic'
-    ufw allow from 100.64.0.0/10 to any port 80 comment 'NetBird HTTP'
-    ufw allow from 100.64.0.0/10 to any port 443 comment 'NetBird HTTPS'
 
     echo "y" | ufw enable
 else
@@ -187,10 +184,7 @@ else
 fi
 
 echo ""
-echo "Setting up Traefik directories..."
-
-mkdir -p "$SCRIPT_DIR/traefik/dynamic"
-chown -R "$REAL_USER:$REAL_USER" "$SCRIPT_DIR/traefik"
+echo "Setting up media directories..."
 
 mkdir -p /mnt/wd/media/{downloads/movies,downloads/tv,quarantine,Movies,TV}
 chown -R "$REAL_USER:$REAL_USER" /mnt/wd/media 2>/dev/null || true
@@ -210,28 +204,9 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
     set +a
 fi
 
-[ -z "${DOMAIN:-}" ]     && read -rp "Base domain (e.g., example.com): " DOMAIN
-[ -z "${ACME_EMAIL:-}" ] && read -rp "ACME email for Let's Encrypt: " ACME_EMAIL
-[ -z "${TZ:-}" ]         && read -rp "Timezone (default: Europe/Helsinki): " TZ
+[ -z "${DOMAIN:-}" ] && read -rp "Base domain (e.g., example.com): " DOMAIN
+[ -z "${TZ:-}" ]      && read -rp "Timezone (default: Europe/Helsinki): " TZ
 TZ=${TZ:-Europe/Helsinki}
-
-echo ""
-echo "DNS Provider for ACME DNS-01 challenge"
-echo "See: https://go-acme.github.io/lego/dns/"
-[ -z "${DNS_PROVIDER:-}" ] && read -rp "DNS provider (e.g., njalla, cloudflare): " DNS_PROVIDER
-
-DNS_TOKEN_VAR=""
-case "$DNS_PROVIDER" in
-    cloudflare) DNS_TOKEN_VAR="CLOUDFLARE_DNS_API_TOKEN" ;;
-    hetzner)    DNS_TOKEN_VAR="HETZNER_API_TOKEN" ;;
-    njalla)     DNS_TOKEN_VAR="NJALLA_TOKEN" ;;
-    porkbun)    DNS_TOKEN_VAR="PORKBUN_API_KEY" ;;
-    route53)    DNS_TOKEN_VAR="AWS_ACCESS_KEY_ID" ;;
-    *)          DNS_TOKEN_VAR="${DNS_PROVIDER^^}_TOKEN" ;;
-esac
-
-DNS_TOKEN="${!DNS_TOKEN_VAR:-}"
-[ -z "$DNS_TOKEN" ] && read -rp "DNS API token ($DNS_TOKEN_VAR): " DNS_TOKEN
 
 echo ""
 echo "VPN for qBittorrent (routes torrent traffic through VPN)"
@@ -253,16 +228,12 @@ REAL_GID=$(id -g "$REAL_USER")
 
 cat > "$SCRIPT_DIR/.env" << EOF
 DOMAIN=$DOMAIN
-ACME_EMAIL=$ACME_EMAIL
 TZ=$TZ
 
 PUID=$REAL_UID
 PGID=$REAL_GID
 VIDEO_GID=$VIDEO_GID
 RENDER_GID=$RENDER_GID
-
-DNS_PROVIDER=$DNS_PROVIDER
-$DNS_TOKEN_VAR=$DNS_TOKEN
 
 VPN_PROVIDER=$VPN_PROVIDER
 VPN_TYPE=$VPN_TYPE
@@ -274,57 +245,6 @@ EOF
 
 chmod 600 "$SCRIPT_DIR/.env"
 chown "$REAL_USER:$REAL_USER" "$SCRIPT_DIR/.env"
-
-echo ""
-if [ ! -f "$SCRIPT_DIR/traefik/traefik.yml" ]; then
-    echo "Generating Traefik configuration..."
-    cat > "$SCRIPT_DIR/traefik/traefik.yml" << EOF
-api:
-  dashboard: false
-
-ping: {}
-
-log:
-  level: INFO
-
-entryPoints:
-  web:
-    address: ":80"
-    http:
-      redirections:
-        entryPoint:
-          to: websecure
-          scheme: https
-  websecure:
-    address: ":443"
-
-providers:
-  docker:
-    endpoint: "unix:///var/run/docker.sock"
-    exposedByDefault: false
-    network: services_internal
-  file:
-    directory: /etc/traefik/dynamic
-    watch: true
-
-certificatesResolvers:
-  letsencrypt:
-    acme:
-      email: "$ACME_EMAIL"
-      storage: /certs/acme.json
-      dnsChallenge:
-        provider: "$DNS_PROVIDER"
-        propagation:
-          delayBeforeChecks: 30
-        resolvers:
-          - "1.1.1.1:53"
-          - "8.8.8.8:53"
-EOF
-
-    chown "$REAL_USER:$REAL_USER" "$SCRIPT_DIR/traefik/traefik.yml"
-else
-    echo "Traefik configuration already exists, skipping."
-fi
 
 echo ""
 echo "================================================"
@@ -339,15 +259,20 @@ echo "  1. Log out and log back in"
 echo "  2. Verify NetBird: netbird status"
 echo "  3. Start services: docker compose up -d"
 echo ""
-echo "Services will be available at:"
+echo "Public services (via NetBird Cloud reverse proxy, needs configuring there):"
 echo "  - https://jellyfin.$DOMAIN"
 echo "  - https://seerr.$DOMAIN"
-echo "  - https://qbit.$DOMAIN"
-echo "  - https://prowlarr.$DOMAIN"
-echo "  - https://sonarr.$DOMAIN"
-echo "  - https://radarr.$DOMAIN"
-echo "  - https://bazarr.$DOMAIN"
-echo "  - https://portainer.$DOMAIN"
+echo "  - https://api.$DOMAIN"
+echo ""
+echo "Mesh-only services (reachable directly at this peer's NetBird IP,"
+echo "no TLS - point a DNS A record at the mesh IP for a friendly name):"
+echo "  - http://\$NETBIRD_IP:9000  (portainer)"
+echo "  - http://\$NETBIRD_IP:8080  (qbittorrent)"
+echo "  - http://\$NETBIRD_IP:9696  (prowlarr)"
+echo "  - http://\$NETBIRD_IP:8989  (sonarr)"
+echo "  - http://\$NETBIRD_IP:7878  (radarr)"
+echo "  - http://\$NETBIRD_IP:6767  (bazarr)"
+echo "  - http://\$NETBIRD_IP:3001  (uptime-kuma)"
 echo ""
 echo "Next: run ./configure-arr.sh to apply arr stack settings."
 echo "Credentials saved in: $SCRIPT_DIR/.env"

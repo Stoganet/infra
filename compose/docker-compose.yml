@@ -1,37 +1,6 @@
 name: services
 
 services:
-  traefik:
-    image: traefik:v3@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259
-    container_name: traefik
-    restart: unless-stopped
-    env_file: .env
-    mem_limit: 256m
-    pids_limit: 65536
-    dns:
-      - 9.9.9.9
-      - 1.1.1.1
-    security_opt:
-      - no-new-privileges:true
-    ports:
-      - "127.0.0.1:80:80"
-      - "127.0.0.1:443:443"
-      - "${NETBIRD_IP}:80:80"
-      - "${NETBIRD_IP}:443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./traefik/dynamic:/etc/traefik/dynamic:ro
-      - traefik_certs:/certs
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/ping"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-
   portainer:
     image: portainer/portainer-ce:2.45.1@sha256:4d616db18cfeb5dd41a69c0958bc825c84483ea9cde1106eb82a5d26f3bd8b0e
     container_name: portainer
@@ -44,12 +13,8 @@ services:
       - portainer_data:/data
     networks:
       - internal
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`portainer.${DOMAIN}`)"
-      - "traefik.http.routers.portainer.entrypoints=websecure"
-      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
-      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+    ports:
+      - "${NETBIRD_IP}:9000:9000"
 
   jellyfin:
     image: jellyfin/jellyfin:10.11.11@sha256:aefb67e6a7ff1debdd154a78a7bbb780fd0c873d8639210a7f6a2016ad2b35db
@@ -78,18 +43,14 @@ services:
       - /mnt/wd/media:/media:ro
     networks:
       - internal
+    ports:
+      - "${NETBIRD_IP}:8096:8096"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8096/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.jellyfin.rule=Host(`jellyfin.${DOMAIN}`)"
-      - "traefik.http.routers.jellyfin.entrypoints=websecure"
-      - "traefik.http.routers.jellyfin.tls.certresolver=letsencrypt"
-      - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
 
   gluetun:
     image: qmcgaw/gluetun:v3.41.3@sha256:fa19cc76b2af13d57a8d3dc3066f2ada061b1c761b8aecf989b3877c0486e027
@@ -122,12 +83,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.qbittorrent.rule=Host(`qbit.${DOMAIN}`)"
-      - "traefik.http.routers.qbittorrent.entrypoints=websecure"
-      - "traefik.http.routers.qbittorrent.tls.certresolver=letsencrypt"
-      - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
 
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest@sha256:2be038f3421f60f62e8e4bf201f66f385b68e4fbc9ed3ab79051069ea22e2650
@@ -180,18 +135,14 @@ services:
       - prowlarr_config:/config
     networks:
       - internal
+    ports:
+      - "${NETBIRD_IP}:9696:9696"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9696/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.${DOMAIN}`)"
-      - "traefik.http.routers.prowlarr.entrypoints=websecure"
-      - "traefik.http.routers.prowlarr.tls.certresolver=letsencrypt"
-      - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
 
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:v3.5.2@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767
@@ -235,18 +186,14 @@ services:
       - /mnt/wd/media:/data
     networks:
       - internal
+    ports:
+      - "${NETBIRD_IP}:8989:8989"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8989/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.sonarr.rule=Host(`sonarr.${DOMAIN}`)"
-      - "traefik.http.routers.sonarr.entrypoints=websecure"
-      - "traefik.http.routers.sonarr.tls.certresolver=letsencrypt"
-      - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
 
   radarr:
     image: lscr.io/linuxserver/radarr:latest@sha256:c960f2b52ec6542dbe6707c5a21e696a7c74fd8b17997454f4d10a55dacee133
@@ -274,18 +221,14 @@ services:
       - /mnt/wd/media:/data
     networks:
       - internal
+    ports:
+      - "${NETBIRD_IP}:7878:7878"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7878/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.radarr.rule=Host(`radarr.${DOMAIN}`)"
-      - "traefik.http.routers.radarr.entrypoints=websecure"
-      - "traefik.http.routers.radarr.tls.certresolver=letsencrypt"
-      - "traefik.http.services.radarr.loadbalancer.server.port=7878"
 
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest@sha256:d24bd0048c759a468970989e9df11a6b96a7628d556d00f923e60a35ba59237b
@@ -313,18 +256,14 @@ services:
       - /mnt/wd/media:/data
     networks:
       - internal
+    ports:
+      - "${NETBIRD_IP}:6767:6767"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:6767/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.bazarr.rule=Host(`bazarr.${DOMAIN}`)"
-      - "traefik.http.routers.bazarr.entrypoints=websecure"
-      - "traefik.http.routers.bazarr.tls.certresolver=letsencrypt"
-      - "traefik.http.services.bazarr.loadbalancer.server.port=6767"
 
   jellyseerr:
     image: ghcr.io/seerr-team/seerr:latest@sha256:f4768de5f616248d723e05891f3345a1402123775d03bf0890dbfedc0831bda1
@@ -344,18 +283,14 @@ services:
       - jellyseerr_config:/app/config
     networks:
       - internal
+    ports:
+      - "${NETBIRD_IP}:5055:5055"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:5055/api/v1/status"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.seerr.rule=Host(`seerr.${DOMAIN}`)"
-      - "traefik.http.routers.seerr.entrypoints=websecure"
-      - "traefik.http.routers.seerr.tls.certresolver=letsencrypt"
-      - "traefik.http.services.seerr.loadbalancer.server.port=5055"
 
   mcp-server:
     image: ghcr.io/stoganet/mcp@sha256:0afc2f0420aa88c8644154e8216dbc68e577129f18eb7585116316cfc02af638
@@ -419,12 +354,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - internal
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.uptime-kuma.rule=Host(`status.${DOMAIN}`)"
-      - "traefik.http.routers.uptime-kuma.entrypoints=websecure"
-      - "traefik.http.routers.uptime-kuma.tls.certresolver=letsencrypt"
-      - "traefik.http.services.uptime-kuma.loadbalancer.server.port=3001"
+    ports:
+      - "${NETBIRD_IP}:3001:3001"
 
   api-proxy:
     image: ghcr.io/stoganet/api-proxy@sha256:96f3233c66e1ac0236579c14947ea39e136975acf5c693b6744aceaca836cf1b
@@ -452,12 +383,8 @@ services:
       - api_proxy_data:/data
     networks:
       - internal
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.api-proxy.rule=Host(`api.${DOMAIN}`)"
-      - "traefik.http.routers.api-proxy.entrypoints=websecure"
-      - "traefik.http.routers.api-proxy.tls.certresolver=letsencrypt"
-      - "traefik.http.services.api-proxy.loadbalancer.server.port=8080"
+    ports:
+      - "${NETBIRD_IP}:8090:8080"
 
 networks:
   internal:
@@ -466,7 +393,6 @@ networks:
 volumes:
   openclaw_config:
   portainer_data:
-  traefik_certs:
   jellyfin_config:
   jellyfin_cache:
   qbittorrent_config:

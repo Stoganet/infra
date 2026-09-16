@@ -115,10 +115,6 @@ TOTAL_FILES=0
 FAILED=0
 VERIFIED=0
 
-CRITICAL_SOURCES="
-$DOCKER_VOLUME_PATH/${COMPOSE_PROJECT}_traefik_certs/_data
-"
-
 USER_DATA_SOURCES="${BACKUP_USER_DATA:-}"
 
 CONFIG_SOURCES="
@@ -201,7 +197,6 @@ backup_env_files() {
     done
 }
 
-backup_sources "critical" "$CRITICAL_SOURCES"
 backup_sources "user_data" "$USER_DATA_SOURCES"
 backup_sources "configs" "$CONFIG_SOURCES"
 backup_env_files "$ENV_FILES"
