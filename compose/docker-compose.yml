@@ -288,7 +288,7 @@ services:
       - "traefik.http.services.radarr.loadbalancer.server.port=7878"
 
   bazarr:
-    image: lscr.io/linuxserver/bazarr:latest@sha256:ac284d3fda9ee7da8b15197dc51f0d7a2a1da98549bee99a3d924d3e94a5e7ed
+    image: lscr.io/linuxserver/bazarr:latest@sha256:d24bd0048c759a468970989e9df11a6b96a7628d556d00f923e60a35ba59237b
     container_name: bazarr
     restart: unless-stopped
     mem_limit: 768m
