@@ -13,11 +13,13 @@
     {
       "matchManagers": ["github-actions", "docker-compose"],
       "matchUpdateTypes": ["digest", "patch", "minor"],
+      "groupName": "all non-major dependencies",
       "automerge": true
     },
     {
       "matchManagers": ["github-actions", "docker-compose"],
       "matchUpdateTypes": ["major"],
+      "groupName": "all major dependencies",
       "automerge": false,
       "labels": ["review-needed"]
     },
