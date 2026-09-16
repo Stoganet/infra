@@ -210,7 +210,7 @@ services:
       - internal
 
   sonarr:
-    image: lscr.io/linuxserver/sonarr:latest@sha256:373159ba768e23a3a1c497d9f2b936addf8fd5b1fdce7dd6a14080ac928bfda0
+    image: lscr.io/linuxserver/sonarr:latest@sha256:82172b363f9eddc02aca544f880a044f2ceb9aaf190bc87e4454e2f705eb91d0
     container_name: sonarr
     restart: unless-stopped
     mem_limit: 384m
