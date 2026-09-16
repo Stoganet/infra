@@ -404,7 +404,7 @@ services:
       - internal
 
   uptime-kuma:
-    image: louislam/uptime-kuma:2-slim@sha256:d23e50f62cf6aca6d457606830ac4bd46c60c74bee0a4cfd49610517eb6cda5a
+    image: louislam/uptime-kuma:2-slim@sha256:6054e0b9b7c3798b8ac066b58fd9bb37afe79bd6a3d8baf21ec6745e4ff0d17b
     container_name: uptime-kuma
     restart: unless-stopped
     mem_limit: 256m
