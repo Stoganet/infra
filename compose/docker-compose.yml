@@ -2,7 +2,7 @@ name: services
 
 services:
   traefik:
-    image: traefik:v3@sha256:9c3b91d5fb7770853ca5c1124a23c34bf2d9b47ffaebeab2614cbaf410dcb2ac
+    image: traefik:v3@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259
     container_name: traefik
     restart: unless-stopped
     env_file: .env
@@ -33,7 +33,7 @@ services:
       start_period: 30s
 
   portainer:
-    image: portainer/portainer-ce:2.44.0@sha256:f49255cd9378827fadfde46062ad0395050237c51d03a93a3dc1dbc6050dda3e
+    image: portainer/portainer-ce:2.45.0@sha256:511f3f06c96fe3b993ebeaafde311c1959cae73a7ef825dba6397d51b450dffa
     container_name: portainer
     restart: unless-stopped
     mem_limit: 256m
@@ -130,7 +130,7 @@ services:
       - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
 
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest@sha256:212b86dff59e3962b4082b5ef20a577e76c8f8527d2ab505cfa887b4bcecb0b0
+    image: lscr.io/linuxserver/qbittorrent:latest@sha256:2be038f3421f60f62e8e4bf201f66f385b68e4fbc9ed3ab79051069ea22e2650
     container_name: qbittorrent
     restart: unless-stopped
     mem_limit: 768m
@@ -156,7 +156,7 @@ services:
       start_period: 30s
 
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:latest@sha256:1295cff29d10b486c0d8324d1559a552140a5932bf8b3d87e398654414f63f92
+    image: lscr.io/linuxserver/prowlarr:latest@sha256:aaa16ba7d66e413db6d0358d3b6c68d833578ba7f176f24a51807181e7637fce
     container_name: prowlarr
     restart: unless-stopped
     mem_limit: 256m
@@ -194,7 +194,7 @@ services:
       - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
 
   flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr:v3.5.0@sha256:139dfee1c6f89249c8d665d1333a42e8ec74ec0a86bc6bb1c8461e10d3a66a47
+    image: ghcr.io/flaresolverr/flaresolverr:v3.5.2@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767
     container_name: flaresolverr
     restart: unless-stopped
     mem_limit: 512m
@@ -210,7 +210,7 @@ services:
       - internal
 
   sonarr:
-    image: lscr.io/linuxserver/sonarr:latest@sha256:373159ba768e23a3a1c497d9f2b936addf8fd5b1fdce7dd6a14080ac928bfda0
+    image: lscr.io/linuxserver/sonarr:latest@sha256:82172b363f9eddc02aca544f880a044f2ceb9aaf190bc87e4454e2f705eb91d0
     container_name: sonarr
     restart: unless-stopped
     mem_limit: 384m
@@ -249,7 +249,7 @@ services:
       - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
 
   radarr:
-    image: lscr.io/linuxserver/radarr:latest@sha256:a45b5ab0f850f39edb4cc9c95bbd967b52ddc3d4574a4dfb45561177db6c88f4
+    image: lscr.io/linuxserver/radarr:latest@sha256:fe051413dfd91b383ba04910552e83fb0306895fefee275c48dafe7bb90807dc
     container_name: radarr
     restart: unless-stopped
     mem_limit: 384m
@@ -288,7 +288,7 @@ services:
       - "traefik.http.services.radarr.loadbalancer.server.port=7878"
 
   bazarr:
-    image: lscr.io/linuxserver/bazarr:latest@sha256:ac284d3fda9ee7da8b15197dc51f0d7a2a1da98549bee99a3d924d3e94a5e7ed
+    image: lscr.io/linuxserver/bazarr:latest@sha256:d24bd0048c759a468970989e9df11a6b96a7628d556d00f923e60a35ba59237b
     container_name: bazarr
     restart: unless-stopped
     mem_limit: 768m
@@ -382,7 +382,7 @@ services:
       - internal
 
   openclaw:
-    image: ghcr.io/openclaw/openclaw:2026.7.1@sha256:6a31d44b2944e7adcd2b582bf6fb463111264ebca97a0201795b799135bd102c
+    image: ghcr.io/openclaw/openclaw:2026.9.4@sha256:cc596b846506a5f4cfcee111394a2725f375f01cca2ebb492a161fd1b747f101
     container_name: openclaw
     profiles:
       - manual
