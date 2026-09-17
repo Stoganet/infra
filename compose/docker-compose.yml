@@ -33,7 +33,7 @@ services:
       start_period: 30s
 
   portainer:
-    image: portainer/portainer-ce:2.45.0@sha256:511f3f06c96fe3b993ebeaafde311c1959cae73a7ef825dba6397d51b450dffa
+    image: portainer/portainer-ce:2.45.1@sha256:4d616db18cfeb5dd41a69c0958bc825c84483ea9cde1106eb82a5d26f3bd8b0e
     container_name: portainer
     restart: unless-stopped
     mem_limit: 256m
@@ -156,7 +156,7 @@ services:
       start_period: 30s
 
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:latest@sha256:aaa16ba7d66e413db6d0358d3b6c68d833578ba7f176f24a51807181e7637fce
+    image: lscr.io/linuxserver/prowlarr:latest@sha256:c96b56d94d116a9f4de94bc23d3381689492e6c3cfb7435320e8d982e406f99a
     container_name: prowlarr
     restart: unless-stopped
     mem_limit: 256m
@@ -210,7 +210,7 @@ services:
       - internal
 
   sonarr:
-    image: lscr.io/linuxserver/sonarr:latest@sha256:82172b363f9eddc02aca544f880a044f2ceb9aaf190bc87e4454e2f705eb91d0
+    image: lscr.io/linuxserver/sonarr:latest@sha256:a5c1a5fecbef946927ab90ad68df319ac5fe644057e5fc18cd993f01ac07b2b2
     container_name: sonarr
     restart: unless-stopped
     mem_limit: 384m
@@ -249,7 +249,7 @@ services:
       - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
 
   radarr:
-    image: lscr.io/linuxserver/radarr:latest@sha256:fe051413dfd91b383ba04910552e83fb0306895fefee275c48dafe7bb90807dc
+    image: lscr.io/linuxserver/radarr:latest@sha256:c960f2b52ec6542dbe6707c5a21e696a7c74fd8b17997454f4d10a55dacee133
     container_name: radarr
     restart: unless-stopped
     mem_limit: 384m
@@ -404,7 +404,7 @@ services:
       - internal
 
   uptime-kuma:
-    image: louislam/uptime-kuma:2-slim@sha256:6054e0b9b7c3798b8ac066b58fd9bb37afe79bd6a3d8baf21ec6745e4ff0d17b
+    image: louislam/uptime-kuma:2-slim@sha256:9c56a772a7df53f444a404c579e87a27bd0c201375d00d6745a75bf8138f4342
     container_name: uptime-kuma
     restart: unless-stopped
     mem_limit: 256m
