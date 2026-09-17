@@ -144,7 +144,7 @@ jobs:
       - name: Healthcheck
         id: healthcheck
         env:
-          HEALTHCHECK_URL_TRAEFIK: ${{ secrets.HEALTHCHECK_URL_TRAEFIK }}
+          HEALTHCHECK_URL_JELLYFIN_INTERNAL: ${{ secrets.HEALTHCHECK_URL_JELLYFIN_INTERNAL }}
         run: |
           set -euo pipefail
           probe() {
@@ -154,14 +154,14 @@ jobs:
           }
           DEADLINE=$(( $(date +%s) + 30 ))
           while [ "$(date +%s)" -lt "$DEADLINE" ]; do
-            TRAEFIK_OK=0
+            INTERNAL_OK=0
             JELLY_OK=0
-            probe "$HEALTHCHECK_URL_TRAEFIK"  && TRAEFIK_OK=1 || true
-            probe "$HEALTHCHECK_URL_JELLYFIN" && JELLY_OK=1   || true
-            if [ "$TRAEFIK_OK" = 1 ] && [ "$JELLY_OK" = 1 ]; then
+            probe "$HEALTHCHECK_URL_JELLYFIN_INTERNAL" && INTERNAL_OK=1 || true
+            probe "$HEALTHCHECK_URL_JELLYFIN"          && JELLY_OK=1    || true
+            if [ "$INTERNAL_OK" = 1 ] && [ "$JELLY_OK" = 1 ]; then
               exit 0
             fi
-            echo "Waiting (traefik=$TRAEFIK_OK jellyfin=$JELLY_OK)..."
+            echo "Waiting (internal=$INTERNAL_OK jellyfin=$JELLY_OK)..."
             sleep 5
           done
           echo "::error::Healthcheck failed within 30s"
@@ -174,7 +174,7 @@ jobs:
           HOME_OVERLAY_IP: ${{ secrets.HOME_OVERLAY_IP }}
           PREVIOUS_SHA: ${{ steps.previous.outputs.sha }}
           TARGET_SHA: ${{ steps.target.outputs.sha }}
-          HEALTHCHECK_URL_TRAEFIK: ${{ secrets.HEALTHCHECK_URL_TRAEFIK }}
+          HEALTHCHECK_URL_JELLYFIN_INTERNAL: ${{ secrets.HEALTHCHECK_URL_JELLYFIN_INTERNAL }}
         run: |
           set -euo pipefail
           if [ "$PREVIOUS_SHA" = "$TARGET_SHA" ]; then
@@ -195,7 +195,7 @@ jobs:
           }
           DEADLINE=$(( $(date +%s) + 30 ))
           while [ "$(date +%s)" -lt "$DEADLINE" ]; do
-            if probe "$HEALTHCHECK_URL_TRAEFIK" && probe "$HEALTHCHECK_URL_JELLYFIN"; then
+            if probe "$HEALTHCHECK_URL_JELLYFIN_INTERNAL" && probe "$HEALTHCHECK_URL_JELLYFIN"; then
               echo "outcome=rolled-back" >> "$GITHUB_OUTPUT"
               exit 0
             fi
