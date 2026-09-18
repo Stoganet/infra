@@ -37,6 +37,8 @@ Traefik             Services
 | **Sonarr / Radarr** | TV and movie automation |
 | **Prowlarr** | Indexer manager for Sonarr/Radarr |
 | **Bazarr** | Subtitle automation |
+| **Chaptarr** | Audiobook and eBook collection manager |
+| **calibre-web** | OPDS/browser reading server for the eBook library |
 | **FlareSolverr** | Cloudflare challenge solver for Prowlarr |
 | **Portainer** | Docker management UI |
 

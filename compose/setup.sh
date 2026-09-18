@@ -186,7 +186,7 @@ fi
 echo ""
 echo "Setting up media directories..."
 
-mkdir -p /mnt/wd/media/{downloads/movies,downloads/tv,quarantine,Movies,TV}
+mkdir -p /mnt/wd/media/{downloads/movies,downloads/tv,quarantine,Movies,TV,Books,Audiobooks}
 chown -R "$REAL_USER:$REAL_USER" /mnt/wd/media 2>/dev/null || true
 
 echo ""
@@ -272,6 +272,8 @@ echo "  - http://\$NETBIRD_IP:9696  (prowlarr)"
 echo "  - http://\$NETBIRD_IP:8989  (sonarr)"
 echo "  - http://\$NETBIRD_IP:7878  (radarr)"
 echo "  - http://\$NETBIRD_IP:6767  (bazarr)"
+echo "  - http://\$NETBIRD_IP:8789  (chaptarr)"
+echo "  - http://\$NETBIRD_IP:8083  (calibre-web / OPDS)"
 echo "  - http://\$NETBIRD_IP:3001  (uptime-kuma)"
 echo ""
 echo "Next: run ./configure-arr.sh to apply arr stack settings."
