@@ -387,7 +387,7 @@ services:
       - internal
 
   openclaw:
-    image: ghcr.io/openclaw/openclaw:2026.9.4@sha256:cc596b846506a5f4cfcee111394a2725f375f01cca2ebb492a161fd1b747f101
+    image: ghcr.io/openclaw/openclaw:2026.9.5@sha256:ea298b62be8955d3ef750e2004a610dd90c3a30e5f9886e5d654d78a0c573218
     container_name: openclaw
     profiles:
       - manual
@@ -459,7 +459,7 @@ services:
   opds-server:
     # TODO: placeholder digest — replaced automatically by opds-server-bump.yml
     # once .github/workflows/deploy.yml in Stoganet/opds-server has pushed a real image.
-    image: ghcr.io/stoganet/opds-server@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    image: ghcr.io/stoganet/opds-server@sha256:48da2c4edfed2065d3ea7c2d9e40b29f16142d62db0be408022bdc710130c8a4
     container_name: opds-server
     restart: unless-stopped
     mem_limit: 128m
