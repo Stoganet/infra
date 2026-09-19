@@ -300,41 +300,6 @@ services:
       retries: 3
       start_period: 30s
 
-  calibre-web:
-    image: ghcr.io/crocodilestick/calibre-web-automated:latest@sha256:c31a738b6d5ec6982c050063dd3f063b6943eb1051fc81144789f840d9093a8d
-    container_name: calibre-web
-    restart: unless-stopped
-    mem_limit: 384m
-    dns:
-      - 9.9.9.9
-      - 1.1.1.1
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - CHOWN
-      - SETUID
-      - SETGID
-      - DAC_OVERRIDE
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-    volumes:
-      - calibre_web_config:/config
-      - /mnt/wd/media/Books:/calibre-library
-    networks:
-      - internal
-    ports:
-      - "${NETBIRD_IP}:8083:8083"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8083/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
   jellyseerr:
     image: ghcr.io/seerr-team/seerr:latest@sha256:f4768de5f616248d723e05891f3345a1402123775d03bf0890dbfedc0831bda1
     container_name: jellyseerr
@@ -492,7 +457,6 @@ volumes:
   radarr_config:
   bazarr_config:
   chaptarr_config:
-  calibre_web_config:
   jellyseerr_config:
   uptime_kuma_data:
   api_proxy_data:
