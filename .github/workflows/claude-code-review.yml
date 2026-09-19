@@ -7,7 +7,10 @@ on:
 
 jobs:
   claude-review:
-    if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'renovate[bot]'
+    if: >
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.login != 'renovate[bot]' &&
+      !startsWith(github.event.pull_request.title, 'chore(deps): bump ')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
