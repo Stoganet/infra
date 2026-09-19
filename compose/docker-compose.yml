@@ -459,7 +459,7 @@ services:
   opds-server:
     # TODO: placeholder digest — replaced automatically by opds-server-bump.yml
     # once .github/workflows/deploy.yml in Stoganet/opds-server has pushed a real image.
-    image: ghcr.io/stoganet/opds-server@sha256:48da2c4edfed2065d3ea7c2d9e40b29f16142d62db0be408022bdc710130c8a4
+    image: ghcr.io/stoganet/opds-server@sha256:a0afb0e0180b3f82550b64d70b0d47a8cec5c2e4b921c90687e98eb549592100
     container_name: opds-server
     restart: unless-stopped
     mem_limit: 128m
