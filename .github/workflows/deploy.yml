@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      NB_VERSION: "0.78.2"
+      NB_VERSION: "0.79.0"
       HEALTHCHECK_URL_JELLYFIN: "https://jellyfin.stoganet.com/System/Info/Public"
     steps:
       - name: Preflight
