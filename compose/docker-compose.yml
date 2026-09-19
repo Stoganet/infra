@@ -456,6 +456,27 @@ services:
     ports:
       - "${NETBIRD_IP}:8090:8080"
 
+  opds-server:
+    # TODO: placeholder digest — replaced automatically by opds-server-bump.yml
+    # once .github/workflows/deploy.yml in Stoganet/opds-server has pushed a real image.
+    image: ghcr.io/stoganet/opds-server@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    container_name: opds-server
+    restart: unless-stopped
+    mem_limit: 128m
+    user: ${PUID}:${PGID}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      - BOOKS_ROOT=/books
+    volumes:
+      - /mnt/wd/media/Books:/books:ro
+    networks:
+      - internal
+    ports:
+      - "${NETBIRD_IP}:8082:8082"
+
 networks:
   internal:
     driver: bridge

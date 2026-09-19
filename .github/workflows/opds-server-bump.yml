@@ -1,0 +1,77 @@
+name: Bump opds-server digest
+
+on:
+  repository_dispatch:
+    types: [opds-server-bump]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: opds-server-bump
+  cancel-in-progress: false
+
+env:
+  BRANCH: chore/opds-server-bump
+
+jobs:
+  bump:
+    name: bump opds-server digest in compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Preflight
+        env:
+          INFRA_DISPATCH_TOKEN: ${{ secrets.INFRA_DISPATCH_TOKEN }}
+          PAYLOAD_SHA: ${{ github.event.client_payload.sha }}
+          PAYLOAD_DIGEST: ${{ github.event.client_payload.digest }}
+        run: |
+          set -euo pipefail
+          [ -n "${INFRA_DISPATCH_TOKEN:-}" ] || { echo "::error::INFRA_DISPATCH_TOKEN not set"; exit 1; }
+          [[ "$PAYLOAD_SHA" =~ ^[a-f0-9]{40}$ ]] || { echo "::error::invalid sha: '$PAYLOAD_SHA'"; exit 1; }
+          [[ "$PAYLOAD_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::invalid digest: '$PAYLOAD_DIGEST'"; exit 1; }
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          token: ${{ secrets.INFRA_DISPATCH_TOKEN }}
+          ref: main
+          fetch-depth: 0
+
+      - name: Bump digest on bump branch
+        id: bump
+        env:
+          PAYLOAD_SHA: ${{ github.event.client_payload.sha }}
+          PAYLOAD_DIGEST: ${{ github.event.client_payload.digest }}
+        run: |
+          set -euo pipefail
+          git checkout -B "$BRANCH" origin/main
+
+          grep -qE "ghcr\.io/[^[:space:]]+/opds-server@sha256:[a-f0-9]+" compose/docker-compose.yml \
+            || { echo "::error::opds-server image not found in compose/docker-compose.yml"; exit 1; }
+          sed -i -E "s|(ghcr\.io/[^[:space:]]+/opds-server)@sha256:[a-f0-9]+|\1@${PAYLOAD_DIGEST}|" compose/docker-compose.yml
+          git diff --quiet compose/docker-compose.yml && { echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; }
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name  "github-actions[bot]"
+          git add compose/docker-compose.yml
+          git commit -m "chore(deps): bump opds-server to ${PAYLOAD_SHA}"
+          git push --force-with-lease origin "$BRANCH"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update PR
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.INFRA_DISPATCH_TOKEN }}
+          PAYLOAD_SHA: ${{ github.event.client_payload.sha }}
+        run: |
+          set -euo pipefail
+          TITLE="chore(deps): bump opds-server to ${PAYLOAD_SHA}"
+          if gh pr view "$BRANCH" --json state -q .state 2>/dev/null | grep -q OPEN; then
+            gh pr edit "$BRANCH" --title "$TITLE"
+          else
+            gh pr create --title "$TITLE" \
+              --body "Automated opds-server digest bump. Merge to main to make this eligible for the next manual Deploy run." \
+              --base main --head "$BRANCH"
+          fi
