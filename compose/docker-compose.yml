@@ -161,7 +161,7 @@ services:
       - internal
 
   sonarr:
-    image: lscr.io/linuxserver/sonarr:latest@sha256:a5c1a5fecbef946927ab90ad68df319ac5fe644057e5fc18cd993f01ac07b2b2
+    image: lscr.io/linuxserver/sonarr:latest@sha256:f247545d23ba8b233d6604575347e48a623fe6ad75dda02348bf81917f3b5c06
     container_name: sonarr
     restart: unless-stopped
     mem_limit: 384m
@@ -231,7 +231,7 @@ services:
       start_period: 30s
 
   bazarr:
-    image: lscr.io/linuxserver/bazarr:latest@sha256:762f802274598da27255b2e5778f262b2b71b355a23e3812d9ee1520f8dbe37c
+    image: lscr.io/linuxserver/bazarr:latest@sha256:8b30e81c4aec2991f469e78fae8afaa89ecc9b21a80e3897f50427216b55470c
     container_name: bazarr
     restart: unless-stopped
     mem_limit: 768m
